@@ -106,7 +106,7 @@ func TriesPath() string {
 		return expandHome(path)
 	}
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, "src", "tries")
+	return filepath.Join(home, "tries")
 }
 
 // ProjectsPath returns the configured projects directory path.

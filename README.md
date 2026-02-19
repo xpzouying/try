@@ -8,7 +8,7 @@ Go rewrite of [tobi/try](https://github.com/tobi/try).
 
 ## Features
 
-- **Centralized experiments** - All experiments in `~/src/tries` (configurable)
+- **Centralized experiments** - All experiments in `~/tries` (configurable)
 - **Auto-dated directories** - Creates `2024-01-15-projectname` format
 - **Fuzzy search** - Interactive selector with smart scoring
 - **Time-aware** - Recently accessed directories rank higher
@@ -41,7 +41,7 @@ eval "$(try init bash)"   # or: try init zsh
 ```bash
 # Create your first experiment
 $ try redis-test
-# Creates ~/src/tries/2024-01-15-redis-test and cd into it
+# Creates ~/tries/2024-01-15-redis-test and cd into it
 
 # Start coding...
 $ git init && echo "# Redis Test" > README.md
@@ -74,7 +74,7 @@ $ try kafka      # Jumps right in
 
 ```bash
 # Your tries directory grows over time:
-~/src/tries/
+~/tries/
 ├── 2024-01-10-go-generics/
 ├── 2024-01-12-docker-compose/
 ├── 2024-01-15-redis-test/
@@ -108,7 +108,7 @@ try .                # Create worktree for current repo
 
 | Environment Variable | Default | Description |
 |---------------------|---------|-------------|
-| `TRY_PATH` | `~/src/tries` | Root directory for experiments |
+| `TRY_PATH` | `~/tries` | Root directory for experiments |
 | `TRY_PROJECTS` | Parent of TRY_PATH | Where graduated projects go |
 
 ## Why Go?

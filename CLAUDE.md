@@ -38,5 +38,5 @@ internal/
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `TRY_PATH` | `~/src/tries` | Experiments directory |
+| `TRY_PATH` | `~/tries` | Experiments directory |
 | `TRY_PROJECTS` | Parent of TRY_PATH | Graduate destination |
