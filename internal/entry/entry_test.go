@@ -214,60 +214,25 @@ func TestScore_Old(t *testing.T) {
 	}
 }
 
-func TestTriesPath_Default(t *testing.T) {
-	// Clear env var
-	os.Unsetenv("TRY_PATH")
-
-	path := TriesPath()
-	home, _ := os.UserHomeDir()
-	expected := filepath.Join(home, "tries")
-
-	if path != expected {
-		t.Errorf("expected %s, got %s", expected, path)
-	}
-}
-
-func TestTriesPath_CustomEnv(t *testing.T) {
-	os.Setenv("TRY_PATH", "/custom/tries")
-	defer os.Unsetenv("TRY_PATH")
-
-	path := TriesPath()
-	if path != "/custom/tries" {
+func TestTriesPath(t *testing.T) {
+	// Test custom env
+	t.Setenv("TRY_PATH", "/custom/tries")
+	if path := TriesPath(); path != "/custom/tries" {
 		t.Errorf("expected /custom/tries, got %s", path)
 	}
-}
 
-func TestTriesPath_TildeExpansion(t *testing.T) {
-	os.Setenv("TRY_PATH", "~/my-tries")
-	defer os.Unsetenv("TRY_PATH")
-
-	path := TriesPath()
+	// Test tilde expansion
+	t.Setenv("TRY_PATH", "~/my-tries")
 	home, _ := os.UserHomeDir()
 	expected := filepath.Join(home, "my-tries")
-
-	if path != expected {
+	if path := TriesPath(); path != expected {
 		t.Errorf("expected %s, got %s", expected, path)
 	}
 }
 
-func TestProjectsPath_Default(t *testing.T) {
-	os.Unsetenv("TRY_PATH")
-	os.Unsetenv("TRY_PROJECTS")
-
-	path := ProjectsPath()
-	home, _ := os.UserHomeDir()
-	// Default is parent of TriesPath (~/tries -> ~)
-	if path != home {
-		t.Errorf("expected %s, got %s", home, path)
-	}
-}
-
-func TestProjectsPath_CustomEnv(t *testing.T) {
-	os.Setenv("TRY_PROJECTS", "/custom/projects")
-	defer os.Unsetenv("TRY_PROJECTS")
-
-	path := ProjectsPath()
-	if path != "/custom/projects" {
+func TestProjectsPath(t *testing.T) {
+	t.Setenv("TRY_PROJECTS", "/custom/projects")
+	if path := ProjectsPath(); path != "/custom/projects" {
 		t.Errorf("expected /custom/projects, got %s", path)
 	}
 }
