@@ -52,6 +52,10 @@ func run(args []string) error {
 		if len(args) > 1 {
 			query = args[1]
 		}
+		// Handle . and ./path in exec mode (shell wrapper always uses exec)
+		if query != "" && strings.HasPrefix(query, ".") {
+			return runWorktree(args[1:]) // Pass "." and any additional args
+		}
 		return runExec(query)
 	case "clone":
 		if len(args) < 2 {
