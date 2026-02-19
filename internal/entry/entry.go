@@ -40,12 +40,20 @@ func NewEntry(path string) (*Entry, error) {
 		baseName = name[11:] // Remove "YYYY-MM-DD-" prefix
 	}
 
+	// Detect if this is a git worktree (.git is a file, not a directory)
+	isWorktree := false
+	gitPath := filepath.Join(path, ".git")
+	if gitInfo, err := os.Stat(gitPath); err == nil && !gitInfo.IsDir() {
+		isWorktree = true
+	}
+
 	return &Entry{
-		Name:     name,
-		Path:     path,
-		ModTime:  info.ModTime(),
-		HasDate:  hasDate,
-		BaseName: baseName,
+		Name:       name,
+		Path:       path,
+		ModTime:    info.ModTime(),
+		HasDate:    hasDate,
+		BaseName:   baseName,
+		IsWorktree: isWorktree,
 	}, nil
 }
 

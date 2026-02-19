@@ -109,6 +109,7 @@ func newWorktreeModel(worktrees []*entry.Entry, repoPath string) worktreeModel {
 		worktrees: worktrees,
 		repoPath:  repoPath,
 		repoName:  repoName,
+		query:     repoName, // Pre-fill with repo name for append mode
 		width:     80,
 		height:    24,
 		now:       time.Now(),
@@ -159,6 +160,10 @@ func (m worktreeModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case tea.KeyCtrlU:
+		m.query = "" // Clear entire line
+		return m, nil
+
 	case tea.KeyRunes:
 		m.query += string(msg.Runes)
 		return m, nil
@@ -187,9 +192,9 @@ func (m worktreeModel) selectCurrent() (tea.Model, tea.Cmd) {
 }
 
 func (m worktreeModel) createNew() (tea.Model, tea.Cmd) {
-	name := m.query
+	name := strings.TrimSpace(m.query)
 	if name == "" {
-		name = m.repoName
+		name = m.repoName // Fallback if user cleared everything
 	}
 	name = strings.ReplaceAll(name, " ", "-")
 
@@ -222,11 +227,7 @@ func (m worktreeModel) View() string {
 	// Query input for new worktree name
 	b.WriteString("  ")
 	b.WriteString(promptStyle.Render("Name: "))
-	if m.query == "" {
-		b.WriteString(metaStyle.Render(m.repoName))
-	} else {
-		b.WriteString(inputStyle.Render(m.query))
-	}
+	b.WriteString(inputStyle.Render(m.query))
 	b.WriteString(cursorStyle.Render("█"))
 	b.WriteString("\n")
 
@@ -252,7 +253,7 @@ func (m worktreeModel) View() string {
 
 	// Footer
 	b.WriteString("  ")
-	b.WriteString(helpStyle.Render("↑/↓ Navigate  Enter Select  Esc Cancel"))
+	b.WriteString(helpStyle.Render("↑/↓ Navigate  Enter Select  Ctrl-U Clear  Esc Cancel"))
 
 	return b.String()
 }
@@ -990,7 +991,7 @@ func (m model) View() string {
 	}
 
 	// Fill empty lines
-	for i := totalItems; i < visibleCount && i < visibleCount; i++ {
+	for i := totalItems; i < visibleCount; i++ {
 		b.WriteString("\n")
 	}
 
@@ -1194,8 +1195,12 @@ func (m model) renderEntry(idx int, selected bool) string {
 		line.WriteString("  ")
 	}
 
-	// Folder emoji
-	line.WriteString(folderStyle.Render("📁 "))
+	// Folder emoji (🌳 for worktree, 📁 for regular)
+	if fe.entry.IsWorktree {
+		line.WriteString(worktreeStyle.Render("🌳 "))
+	} else {
+		line.WriteString(folderStyle.Render("📁 "))
+	}
 
 	// Directory name with date dimmed
 	name := fe.entry.Name
