@@ -7,8 +7,7 @@ import (
 )
 
 func TestDetect_Bash(t *testing.T) {
-	os.Setenv("SHELL", "/bin/bash")
-	defer os.Unsetenv("SHELL")
+	t.Setenv("SHELL", "/bin/bash")
 
 	result := Detect()
 	if result != "bash" {
@@ -17,8 +16,7 @@ func TestDetect_Bash(t *testing.T) {
 }
 
 func TestDetect_Zsh(t *testing.T) {
-	os.Setenv("SHELL", "/usr/local/bin/zsh")
-	defer os.Unsetenv("SHELL")
+	t.Setenv("SHELL", "/usr/local/bin/zsh")
 
 	result := Detect()
 	if result != "zsh" {
@@ -27,8 +25,7 @@ func TestDetect_Zsh(t *testing.T) {
 }
 
 func TestDetect_Fish(t *testing.T) {
-	os.Setenv("SHELL", "/opt/homebrew/bin/fish")
-	defer os.Unsetenv("SHELL")
+	t.Setenv("SHELL", "/opt/homebrew/bin/fish")
 
 	result := Detect()
 	if result != "fish" {
@@ -37,7 +34,17 @@ func TestDetect_Fish(t *testing.T) {
 }
 
 func TestDetect_Empty(t *testing.T) {
-	os.Unsetenv("SHELL")
+	// Unset by setting to empty and checking Detect handles it
+	// Note: t.Setenv doesn't support unset, so we test the default case differently
+	originalShell := os.Getenv("SHELL")
+	if err := os.Unsetenv("SHELL"); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if originalShell != "" {
+			_ = os.Setenv("SHELL", originalShell)
+		}
+	}()
 
 	result := Detect()
 	if result != "bash" {

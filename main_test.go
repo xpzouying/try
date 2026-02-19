@@ -186,7 +186,7 @@ func TestRun_Help(t *testing.T) {
 
 	err := run([]string{"-h"})
 
-	w.Close()
+	_ = w.Close()
 	os.Stderr = oldStderr
 
 	if err != nil {
@@ -214,7 +214,7 @@ func TestRun_Version(t *testing.T) {
 
 	err := run([]string{"--version"})
 
-	w.Close()
+	_ = w.Close()
 	os.Stderr = oldStderr
 
 	if err != nil {
@@ -234,8 +234,7 @@ func TestRun_Version(t *testing.T) {
 func TestRun_Clone(t *testing.T) {
 	// Set temp tries path
 	tmpDir := t.TempDir()
-	os.Setenv("TRY_PATH", tmpDir)
-	defer os.Unsetenv("TRY_PATH")
+	t.Setenv("TRY_PATH", tmpDir)
 
 	// Capture stdout
 	oldStdout := os.Stdout
@@ -244,7 +243,7 @@ func TestRun_Clone(t *testing.T) {
 
 	err := run([]string{"clone", "https://github.com/tobi/try"})
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = oldStdout
 
 	if err != nil {
@@ -266,8 +265,7 @@ func TestRun_Clone(t *testing.T) {
 // Integration test: git URL auto-detection
 func TestRun_GitURLAutoDetect(t *testing.T) {
 	tmpDir := t.TempDir()
-	os.Setenv("TRY_PATH", tmpDir)
-	defer os.Unsetenv("TRY_PATH")
+	t.Setenv("TRY_PATH", tmpDir)
 
 	oldStdout := os.Stdout
 	r, w, _ := os.Pipe()
@@ -276,7 +274,7 @@ func TestRun_GitURLAutoDetect(t *testing.T) {
 	// Pass git URL directly (without 'clone' subcommand)
 	err := run([]string{"https://github.com/tobi/try"})
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = oldStdout
 
 	if err != nil {
@@ -311,7 +309,7 @@ func TestRun_Init(t *testing.T) {
 
 	err := run([]string{"init", "bash"})
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = oldStdout
 
 	if err != nil {
@@ -330,8 +328,7 @@ func TestRun_Init(t *testing.T) {
 // Integration test: worktree on non-git directory
 func TestRun_WorktreeNonGit(t *testing.T) {
 	tmpDir := t.TempDir()
-	os.Setenv("TRY_PATH", tmpDir)
-	defer os.Unsetenv("TRY_PATH")
+	t.Setenv("TRY_PATH", tmpDir)
 
 	// Create a non-git directory
 	nonGitDir := filepath.Join(tmpDir, "non-git")
@@ -350,19 +347,24 @@ func TestRun_WorktreeNonGit(t *testing.T) {
 	os.Stdout = w
 
 	// Change to non-git dir and run try .
-	oldWd, _ := os.Getwd()
-	os.Chdir(nonGitDir)
-	defer os.Chdir(oldWd)
+	oldWd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(nonGitDir); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(oldWd) }()
 
-	err := run([]string{"."})
+	runErr := run([]string{"."})
 
-	w.Close()
-	wErr.Close()
+	_ = w.Close()
+	_ = wErr.Close()
 	os.Stdout = oldStdout
 	os.Stderr = oldStderr
 
-	if err != nil {
-		t.Errorf("run(.) returned error: %v", err)
+	if runErr != nil {
+		t.Errorf("run(.) returned error: %v", runErr)
 	}
 
 	// Check stderr for note

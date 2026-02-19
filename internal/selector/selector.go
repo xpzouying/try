@@ -38,7 +38,7 @@ func Run(initialQuery string) (*Result, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open tty: %w", err)
 	}
-	defer tty.Close()
+	defer func() { _ = tty.Close() }()
 
 	m := newModel(entries, initialQuery)
 	p := tea.NewProgram(m,

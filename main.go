@@ -85,7 +85,7 @@ func containsAny(args []string, targets ...string) bool {
 
 func runInit(args []string) error {
 	fs := flag.NewFlagSet("init", flag.ExitOnError)
-	fs.Parse(args)
+	_ = fs.Parse(args)
 
 	shellName := fs.Arg(0)
 	if shellName == "" {
