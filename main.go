@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/xpzouying/try/internal/selector"
 	"github.com/xpzouying/try/internal/shell"
 )
 
@@ -68,8 +69,29 @@ func runInit(args []string) error {
 }
 
 func runExec(query string) error {
-	// TODO: Implement interactive selector
-	fmt.Fprintf(os.Stderr, "Interactive selector not implemented yet. Query: %q\n", query)
+	// Ensure tries directory exists
+	if err := selector.EnsureTriesDir(); err != nil {
+		return fmt.Errorf("create tries directory: %w", err)
+	}
+
+	result, err := selector.Run(query)
+	if err != nil {
+		return err
+	}
+
+	if result == nil || result.Action == "cancel" {
+		return nil
+	}
+
+	switch result.Action {
+	case "cd":
+		// Output cd command for shell to eval
+		fmt.Printf("cd %q\n", result.Path)
+	case "mkdir":
+		// Create directory and cd into it
+		fmt.Printf("mkdir -p %q && cd %q\n", result.Path, result.Path)
+	}
+
 	return nil
 }
 
