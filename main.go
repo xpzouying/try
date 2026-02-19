@@ -140,7 +140,12 @@ func runExec(query string) error {
 	case "delete":
 		// Delete directory (stay in current directory or go to tries root)
 		triesPath := entry.TriesPath()
-		fmt.Printf("rm -rf %q && ", result.Path)
+		if result.IsWorktree {
+			// Use git worktree remove for proper cleanup (updates main repo's .git/worktrees/)
+			fmt.Printf("git worktree remove --force %q && ", result.Path)
+		} else {
+			fmt.Printf("rm -rf %q && ", result.Path)
+		}
 		fmt.Printf("echo %q && ", fmt.Sprintf("Deleted: %s", result.BaseName))
 		// If we're in the deleted directory, go to tries root
 		fmt.Printf("( cd %q 2>/dev/null || cd %q )\n", os.Getenv("PWD"), triesPath)
@@ -183,6 +188,7 @@ func runClone(gitURL string) error {
 }
 
 // runWorktree handles "try ." and "try ./path" commands
+// Creates worktree directly without TUI (like Ruby version's "try worktree <name>")
 func runWorktree(args []string) error {
 	// Ensure tries directory exists
 	if err := selector.EnsureTriesDir(); err != nil {
@@ -214,47 +220,6 @@ func runWorktree(args []string) error {
 		isGitRepo = true
 	}
 
-	// If git repo and no custom name → show TUI with existing worktrees
-	if isGitRepo && customName == "" {
-		return runWorktreeTUI(repoDir)
-	}
-
-	// Direct creation mode (with custom name or non-git directory)
-	return runWorktreeDirect(repoDir, pathArg, customName, isGitRepo)
-}
-
-// runWorktreeTUI shows TUI with existing worktrees from the repo
-func runWorktreeTUI(repoDir string) error {
-	result, err := selector.RunWorktree(repoDir)
-	if err != nil {
-		return err
-	}
-
-	if result == nil || result.Action == "cancel" {
-		return nil
-	}
-
-	switch result.Action {
-	case "cd":
-		// Jump to existing worktree
-		fmt.Printf("cd %q\n", result.Path)
-	case "worktree":
-		// Create new worktree
-		triesPath := entry.TriesPath()
-		finalName := resolveUniqueName(triesPath, time.Now().Format("2006-01-02"), result.NewName)
-		fullPath := filepath.Join(triesPath, fmt.Sprintf("%s-%s", time.Now().Format("2006-01-02"), finalName))
-
-		fmt.Printf("mkdir -p %q && ", fullPath)
-		fmt.Printf("echo %q && ", fmt.Sprintf("Using git worktree to create this trial from %s.", result.RepoPath))
-		fmt.Printf("(cd %q && git worktree add --detach %q 2>/dev/null || true) && ", result.RepoPath, fullPath)
-		fmt.Printf("cd %q\n", fullPath)
-	}
-
-	return nil
-}
-
-// runWorktreeDirect creates a worktree directly without TUI
-func runWorktreeDirect(repoDir, pathArg, customName string, isGitRepo bool) error {
 	// Determine the base name
 	baseName := customName
 	if baseName == "" {
@@ -364,12 +329,12 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, `try - Manage experimental project directories
 
 Usage:
-  try                  Interactive selector
+  try                  Interactive selector (TUI)
   try <name>           Jump to or create experiment
   try init [shell]     Output shell wrapper function
   try clone <url>      Clone repository into tries directory
-  try .                Show worktrees from current repo (TUI)
-  try . <name>         Create worktree with custom name (direct)
+  try .                Create worktree from current git repo
+  try . <name>         Create worktree with custom name
   try ./path           Create worktree from specified path
   try version          Show version
 
@@ -377,8 +342,8 @@ Examples:
   eval "$(try init bash)"   # Add to ~/.bashrc
   try redis                 # Create or jump to redis experiment
   try clone https://github.com/user/repo
-  try .                     # TUI: show existing worktrees + create
-  try . experiment          # Direct: create 2024-01-15-experiment
+  try .                     # Create worktree: 2024-01-15-reponame
+  try . feature             # Create worktree: 2024-01-15-feature
 
 Environment:
   TRY_PATH      Root directory (default: ~/tries)

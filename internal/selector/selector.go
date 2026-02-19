@@ -15,12 +15,13 @@ import (
 
 // Result represents the outcome of the selector.
 type Result struct {
-	Action   string // "cd", "mkdir", "graduate", "delete", "rename", "worktree", "cancel"
-	Path     string
-	DestPath string // For graduate/rename: destination path
-	BaseName string // For graduate/delete/rename: original directory name
-	NewName  string // For rename: new directory name
-	RepoPath string // For worktree: source repository path
+	Action     string // "cd", "mkdir", "graduate", "delete", "rename", "worktree", "cancel"
+	Path       string
+	DestPath   string // For graduate/rename: destination path
+	BaseName   string // For graduate/delete/rename: original directory name
+	NewName    string // For rename: new directory name
+	RepoPath   string // For worktree: source repository path
+	IsWorktree bool   // For delete: whether the entry is a git worktree
 }
 
 // Run launches the interactive selector and returns the result.
@@ -52,278 +53,6 @@ func Run(initialQuery string) (*Result, error) {
 	}
 
 	return finalModel.(model).result, nil
-}
-
-// RunWorktree launches a selector for worktrees of a specific repository.
-// Shows existing worktrees in tries directory + option to create new.
-func RunWorktree(repoPath string) (*Result, error) {
-	// Get existing worktrees for this repo
-	worktrees, err := entry.LoadWorktreesForRepo(repoPath)
-	if err != nil {
-		return nil, fmt.Errorf("load worktrees: %w", err)
-	}
-
-	// Open /dev/tty directly for TUI input/output
-	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
-	if err != nil {
-		return nil, fmt.Errorf("open tty: %w", err)
-	}
-	defer tty.Close()
-
-	m := newWorktreeModel(worktrees, repoPath)
-	p := tea.NewProgram(m,
-		tea.WithAltScreen(),
-		tea.WithInput(tty),
-		tea.WithOutput(tty),
-	)
-
-	finalModel, err := p.Run()
-	if err != nil {
-		return nil, fmt.Errorf("run selector: %w", err)
-	}
-
-	return finalModel.(worktreeModel).result, nil
-}
-
-// worktreeModel is a specialized model for worktree selection
-type worktreeModel struct {
-	worktrees []*entry.Entry
-	repoPath  string
-	repoName  string
-	cursor    int
-	width     int
-	height    int
-	result    *Result
-	now       time.Time
-	query     string // For creating new worktree name
-}
-
-func newWorktreeModel(worktrees []*entry.Entry, repoPath string) worktreeModel {
-	repoName := filepath.Base(repoPath)
-	// Try to resolve symlinks for better name
-	if realPath, err := filepath.EvalSymlinks(repoPath); err == nil {
-		repoName = filepath.Base(realPath)
-	}
-
-	return worktreeModel{
-		worktrees: worktrees,
-		repoPath:  repoPath,
-		repoName:  repoName,
-		query:     repoName, // Pre-fill with repo name for append mode
-		width:     80,
-		height:    24,
-		now:       time.Now(),
-	}
-}
-
-func (m worktreeModel) Init() tea.Cmd {
-	return tea.SetWindowTitle("try - worktree")
-}
-
-func (m worktreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		return m.handleKey(msg)
-	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
-		return m, nil
-	}
-	return m, nil
-}
-
-func (m worktreeModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.Type {
-	case tea.KeyCtrlC, tea.KeyEsc:
-		m.result = &Result{Action: "cancel"}
-		return m, tea.Quit
-
-	case tea.KeyEnter:
-		return m.selectCurrent()
-
-	case tea.KeyUp, tea.KeyCtrlP:
-		if m.cursor > 0 {
-			m.cursor--
-		}
-		return m, nil
-
-	case tea.KeyDown, tea.KeyCtrlN:
-		maxCursor := len(m.worktrees) // +0 because create is always shown
-		if m.cursor < maxCursor {
-			m.cursor++
-		}
-		return m, nil
-
-	case tea.KeyBackspace:
-		if len(m.query) > 0 {
-			m.query = m.query[:len(m.query)-1]
-		}
-		return m, nil
-
-	case tea.KeyCtrlU:
-		m.query = "" // Clear entire line
-		return m, nil
-
-	case tea.KeyRunes:
-		m.query += string(msg.Runes)
-		return m, nil
-	}
-
-	return m, nil
-}
-
-func (m worktreeModel) selectCurrent() (tea.Model, tea.Cmd) {
-	// If cursor is on "Create new" (last position)
-	if m.cursor == len(m.worktrees) {
-		return m.createNew()
-	}
-
-	// Select existing worktree
-	if m.cursor < len(m.worktrees) {
-		selected := m.worktrees[m.cursor]
-		m.result = &Result{
-			Action: "cd",
-			Path:   selected.Path,
-		}
-		return m, tea.Quit
-	}
-
-	return m.createNew()
-}
-
-func (m worktreeModel) createNew() (tea.Model, tea.Cmd) {
-	name := strings.TrimSpace(m.query)
-	if name == "" {
-		name = m.repoName // Fallback if user cleared everything
-	}
-	name = strings.ReplaceAll(name, " ", "-")
-
-	datePrefix := m.now.Format("2006-01-02")
-	dirName := fmt.Sprintf("%s-%s", datePrefix, name)
-	fullPath := filepath.Join(entry.TriesPath(), dirName)
-
-	m.result = &Result{
-		Action:   "worktree",
-		Path:     fullPath,
-		RepoPath: m.repoPath,
-		NewName:  name,
-	}
-	return m, tea.Quit
-}
-
-func (m worktreeModel) View() string {
-	var b strings.Builder
-
-	// Header
-	b.WriteString("  ")
-	b.WriteString(worktreeStyle.Render("🌳 Worktree"))
-	b.WriteString(titleStyle.Render(fmt.Sprintf(" - %s", m.repoName)))
-	b.WriteString("\n")
-
-	// Separator
-	b.WriteString(m.separator())
-	b.WriteString("\n")
-
-	// Query input for new worktree name
-	b.WriteString("  ")
-	b.WriteString(promptStyle.Render("Name: "))
-	b.WriteString(inputStyle.Render(m.query))
-	b.WriteString(cursorStyle.Render("█"))
-	b.WriteString("\n")
-
-	// Separator
-	b.WriteString(m.separator())
-	b.WriteString("\n")
-
-	// Existing worktrees
-	if len(m.worktrees) > 0 {
-		for i, wt := range m.worktrees {
-			b.WriteString(m.renderWorktreeEntry(i, wt, i == m.cursor))
-			b.WriteString("\n")
-		}
-	}
-
-	// Create new option
-	b.WriteString(m.renderCreateOption(m.cursor == len(m.worktrees)))
-	b.WriteString("\n")
-
-	// Separator
-	b.WriteString(m.separator())
-	b.WriteString("\n")
-
-	// Footer
-	b.WriteString("  ")
-	b.WriteString(helpStyle.Render("↑/↓ Navigate  Enter Select  Ctrl-U Clear  Esc Cancel"))
-
-	return b.String()
-}
-
-func (m worktreeModel) separator() string {
-	width := m.width - 2
-	if width < 10 {
-		width = 78
-	}
-	return "  " + separatorStyle.Render(strings.Repeat("─", width))
-}
-
-func (m worktreeModel) renderWorktreeEntry(idx int, wt *entry.Entry, selected bool) string {
-	var line strings.Builder
-
-	if selected {
-		line.WriteString(arrowStyle.Render("→ "))
-	} else {
-		line.WriteString("  ")
-	}
-
-	line.WriteString(worktreeStyle.Render("🌳 "))
-
-	// Directory name with date dimmed
-	name := wt.Name
-	if wt.HasDate && len(name) > 11 {
-		datePart := name[:11]
-		namePart := name[11:]
-		line.WriteString(dateStyle.Render(datePart))
-		line.WriteString(nameStyle.Render(namePart))
-	} else {
-		line.WriteString(nameStyle.Render(name))
-	}
-
-	// Age
-	age := formatAge(wt.ModTime)
-	line.WriteString(metaStyle.Render(fmt.Sprintf("  %s", age)))
-
-	result := line.String()
-	if selected {
-		result = selectedStyle.Render(result)
-	}
-
-	return result
-}
-
-func (m worktreeModel) renderCreateOption(selected bool) string {
-	var line strings.Builder
-
-	if selected {
-		line.WriteString(arrowStyle.Render("→ "))
-	} else {
-		line.WriteString("  ")
-	}
-
-	line.WriteString(createStyle.Render("📂 "))
-
-	datePrefix := m.now.Format("2006-01-02")
-	name := m.query
-	if name == "" {
-		name = m.repoName
-	}
-	line.WriteString(createStyle.Render(fmt.Sprintf("Create new: %s-%s", datePrefix, name)))
-
-	result := line.String()
-	if selected {
-		result = selectedStyle.Render(result)
-	}
-
-	return result
 }
 
 // UI mode
@@ -735,9 +464,10 @@ func (m model) confirmDelete() (tea.Model, tea.Cmd) {
 	}
 
 	m.result = &Result{
-		Action:   "delete",
-		Path:     m.dialogEntry.Path,
-		BaseName: m.dialogEntry.Name,
+		Action:     "delete",
+		Path:       m.dialogEntry.Path,
+		BaseName:   m.dialogEntry.Name,
+		IsWorktree: m.dialogEntry.IsWorktree,
 	}
 	return m, tea.Quit
 }
@@ -1079,7 +809,11 @@ func (m model) viewDeleteDialog() string {
 	// Header
 	b.WriteString("  ")
 	b.WriteString(deleteStyle.Render("🗑️  Delete"))
-	b.WriteString(titleStyle.Render(" - Remove Directory"))
+	if m.dialogEntry.IsWorktree {
+		b.WriteString(titleStyle.Render(" - Remove Worktree"))
+	} else {
+		b.WriteString(titleStyle.Render(" - Remove Directory"))
+	}
 	b.WriteString("\n")
 
 	// Separator
@@ -1088,13 +822,21 @@ func (m model) viewDeleteDialog() string {
 
 	// Directory to delete
 	b.WriteString("  ")
-	b.WriteString(deleteStyle.Render("📁 "))
+	if m.dialogEntry.IsWorktree {
+		b.WriteString(worktreeStyle.Render("🌳 "))
+	} else {
+		b.WriteString(deleteStyle.Render("📁 "))
+	}
 	b.WriteString(nameStyle.Render(m.dialogEntry.Name))
 	b.WriteString("\n\n")
 
 	// Warning
 	b.WriteString("  ")
-	b.WriteString(errorStyle.Render("⚠ This will permanently delete the directory and all its contents!"))
+	if m.dialogEntry.IsWorktree {
+		b.WriteString(errorStyle.Render("⚠ This will remove the worktree and update the main repository."))
+	} else {
+		b.WriteString(errorStyle.Render("⚠ This will permanently delete the directory and all its contents!"))
+	}
 	b.WriteString("\n\n")
 
 	// Input field
