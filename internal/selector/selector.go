@@ -26,8 +26,21 @@ func Run(initialQuery string) (*Result, error) {
 		return nil, fmt.Errorf("load entries: %w", err)
 	}
 
+	// Open /dev/tty directly for TUI input/output.
+	// This is necessary because shell wrapper captures stdout with $(...),
+	// so we need to bypass stdout and write directly to the terminal.
+	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+	if err != nil {
+		return nil, fmt.Errorf("open tty: %w", err)
+	}
+	defer tty.Close()
+
 	m := newModel(entries, initialQuery)
-	p := tea.NewProgram(m, tea.WithAltScreen())
+	p := tea.NewProgram(m,
+		tea.WithAltScreen(),
+		tea.WithInput(tty),
+		tea.WithOutput(tty),
+	)
 
 	finalModel, err := p.Run()
 	if err != nil {
