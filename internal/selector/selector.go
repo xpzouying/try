@@ -109,7 +109,15 @@ func (m *model) filter() {
 		})
 	}
 
+	// Check if exact name already exists (don't show create option if so)
+	newName := fmt.Sprintf("%s-%s", m.now.Format("2006-01-02"), m.query)
 	m.showCreate = true
+	for _, fe := range m.filtered {
+		if fe.entry.Name == newName {
+			m.showCreate = false
+			break
+		}
+	}
 
 	// Ensure cursor is in valid range
 	maxCursor := len(m.filtered)
@@ -223,52 +231,55 @@ func (m model) createNew() (tea.Model, tea.Cmd) {
 	return m, tea.Quit
 }
 
-// Styles
+// Styles - using vibrant colors similar to Ruby version
 var (
 	titleStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(lipgloss.Color("212"))
+			Foreground(lipgloss.Color("114")) // Green (like Ruby HEADER)
 
 	separatorStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("238"))
+			Foreground(lipgloss.Color("240"))
 
 	promptStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("244"))
 
 	inputStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("255"))
+			Foreground(lipgloss.Color("255")).
+			Bold(true)
 
 	cursorStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("212"))
+			Foreground(lipgloss.Color("214")). // Orange
+			Bold(true)
 
 	selectedStyle = lipgloss.NewStyle().
-			Background(lipgloss.Color("236"))
+			Background(lipgloss.Color("238"))
 
 	arrowStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("212")).
+			Foreground(lipgloss.Color("214")). // Orange (like Ruby ACCENT)
 			Bold(true)
 
 	folderStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("220"))
+			Foreground(lipgloss.Color("220")) // Yellow folder
 
 	dateStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("242"))
+			Foreground(lipgloss.Color("245")) // Muted (like Ruby MUTED)
 
 	nameStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("255"))
 
 	matchStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("212")).
+			Foreground(lipgloss.Color("226")). // Bright yellow (like Ruby MATCH)
 			Bold(true)
 
 	metaStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("242"))
+			Foreground(lipgloss.Color("245"))
 
 	createStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("114"))
+			Foreground(lipgloss.Color("114")). // Green
+			Bold(true)
 
 	helpStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("242"))
+			Foreground(lipgloss.Color("244"))
 )
 
 func (m model) View() string {
