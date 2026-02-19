@@ -46,11 +46,11 @@ Single binary CLI tool to manage experimental project directories. No runtime de
 - [x] Ctrl-G graduate to projects directory
 
 ### Phase 4: Polish
-- [ ] Unit tests for fuzzy, entry, shell
-- [ ] Integration tests
-- [ ] Cross-platform build (Linux, macOS)
-- [ ] Release automation (goreleaser)
-- [ ] Homebrew formula
+- [x] Unit tests for fuzzy, entry, shell
+- [x] Integration tests
+- [x] Cross-platform build (Linux, macOS)
+- [x] Release automation (goreleaser)
+- [ ] Homebrew formula (requires separate tap repo)
 
 ## Command Reference
 
