@@ -162,55 +162,27 @@ func TestLoadEntries_SortedByModTime(t *testing.T) {
 	}
 }
 
-func TestScore_Today(t *testing.T) {
-	entry := &Entry{
-		ModTime: time.Now().Add(-1 * time.Hour),
-		HasDate: true,
+func TestScore(t *testing.T) {
+	tests := []struct {
+		name     string
+		age      time.Duration
+		hasDate  bool
+		expected float64
+	}{
+		{"today with date prefix", -1 * time.Hour, true, 110},
+		{"this week", -3 * 24 * time.Hour, false, 50},
+		{"this month with date prefix", -10 * 24 * time.Hour, true, 30},
+		{"old entry", -60 * 24 * time.Hour, false, 0},
 	}
 
-	score := entry.Score(time.Now())
-	// Should get 100 (today) + 10 (date prefix) = 110
-	if score != 110 {
-		t.Errorf("expected score 110 for today with date prefix, got %f", score)
-	}
-}
-
-func TestScore_ThisWeek(t *testing.T) {
-	entry := &Entry{
-		ModTime: time.Now().Add(-3 * 24 * time.Hour), // 3 days ago
-		HasDate: false,
-	}
-
-	score := entry.Score(time.Now())
-	// Should get 50 (this week) + 0 (no date prefix) = 50
-	if score != 50 {
-		t.Errorf("expected score 50 for this week, got %f", score)
-	}
-}
-
-func TestScore_ThisMonth(t *testing.T) {
-	entry := &Entry{
-		ModTime: time.Now().Add(-10 * 24 * time.Hour), // 10 days ago
-		HasDate: true,
-	}
-
-	score := entry.Score(time.Now())
-	// Should get 20 (this month) + 10 (date prefix) = 30
-	if score != 30 {
-		t.Errorf("expected score 30 for this month with date prefix, got %f", score)
-	}
-}
-
-func TestScore_Old(t *testing.T) {
-	entry := &Entry{
-		ModTime: time.Now().Add(-60 * 24 * time.Hour), // 60 days ago
-		HasDate: false,
-	}
-
-	score := entry.Score(time.Now())
-	// Should get 0 (old) + 0 (no date prefix) = 0
-	if score != 0 {
-		t.Errorf("expected score 0 for old entry, got %f", score)
+	now := time.Now()
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			entry := &Entry{ModTime: now.Add(tc.age), HasDate: tc.hasDate}
+			if score := entry.Score(now); score != tc.expected {
+				t.Errorf("expected %v, got %v", tc.expected, score)
+			}
+		})
 	}
 }
 
