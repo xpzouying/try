@@ -37,10 +37,10 @@ Single binary CLI tool to manage experimental project directories. No runtime de
 - [x] Hide create option when exact match exists
 - [x] Vibrant color scheme (matching Ruby)
 
-### Phase 3: Full Features (Current)
+### Phase 3: Full Features ✅
 - [x] `try clone <url>` - Git clone to tries directory
 - [x] `try .` / `try ./path` - Create worktree for current repo
-- [ ] Auto-detect git URL and clone
+- [x] Auto-detect git URL and clone
 - [x] Ctrl-D delete with confirmation
 - [x] Ctrl-R rename directory
 - [x] Ctrl-G graduate to projects directory
@@ -63,7 +63,7 @@ Single binary CLI tool to manage experimental project directories. No runtime de
 | `try version` | ✅ | Show version |
 | `try clone <url>` | ✅ | Clone git repo to tries dir |
 | `try .` | ✅ | Create worktree for current repo |
-| `try <git-url>` | ❌ | Auto-detect and clone |
+| `try <git-url>` | ✅ | Auto-detect and clone |
 
 ## Architecture
 
