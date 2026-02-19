@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
+	"time"
 
 	"github.com/xpzouying/try/internal/entry"
 	"github.com/xpzouying/try/internal/selector"
@@ -144,10 +147,62 @@ func runExec(query string) error {
 	return nil
 }
 
-func runClone(url string) error {
-	// TODO: Implement git clone
-	fmt.Fprintf(os.Stderr, "Clone not implemented yet. URL: %s\n", url)
+func runClone(gitURL string) error {
+	// Ensure tries directory exists
+	if err := selector.EnsureTriesDir(); err != nil {
+		return fmt.Errorf("create tries directory: %w", err)
+	}
+
+	// Parse git URL to get user and repo
+	user, repo, err := parseGitURI(gitURL)
+	if err != nil {
+		return fmt.Errorf("invalid git URL: %w", err)
+	}
+
+	// Generate directory name: {date}-{user}-{repo}
+	datePrefix := time.Now().Format("2006-01-02")
+	dirName := fmt.Sprintf("%s-%s-%s", datePrefix, user, repo)
+	fullPath := filepath.Join(entry.TriesPath(), dirName)
+
+	// Output shell commands for clone
+	fmt.Printf("mkdir -p %q && ", fullPath)
+	fmt.Printf("echo %q && ", fmt.Sprintf("Using git clone to create this trial from %s.", gitURL))
+	fmt.Printf("git clone %q %q && ", gitURL, fullPath)
+	fmt.Printf("cd %q\n", fullPath)
+
 	return nil
+}
+
+// parseGitURI extracts user and repo from various git URL formats
+func parseGitURI(uri string) (user, repo string, err error) {
+	// Remove .git suffix if present
+	uri = strings.TrimSuffix(uri, ".git")
+
+	// https://github.com/user/repo
+	if re := regexp.MustCompile(`^https?://github\.com/([^/]+)/([^/]+)`); re.MatchString(uri) {
+		matches := re.FindStringSubmatch(uri)
+		return matches[1], matches[2], nil
+	}
+
+	// git@github.com:user/repo
+	if re := regexp.MustCompile(`^git@github\.com:([^/]+)/([^/]+)`); re.MatchString(uri) {
+		matches := re.FindStringSubmatch(uri)
+		return matches[1], matches[2], nil
+	}
+
+	// https://host/user/repo (gitlab, etc.)
+	if re := regexp.MustCompile(`^https?://[^/]+/([^/]+)/([^/]+)`); re.MatchString(uri) {
+		matches := re.FindStringSubmatch(uri)
+		return matches[1], matches[2], nil
+	}
+
+	// git@host:user/repo
+	if re := regexp.MustCompile(`^git@[^:]+:([^/]+)/([^/]+)`); re.MatchString(uri) {
+		matches := re.FindStringSubmatch(uri)
+		return matches[1], matches[2], nil
+	}
+
+	return "", "", fmt.Errorf("could not parse git URL: %s", uri)
 }
 
 func printUsage() {
