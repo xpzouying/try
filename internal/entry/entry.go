@@ -1,20 +1,24 @@
 package entry
 
 import (
+	"bufio"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strings"
 	"time"
 )
 
 // Entry represents a directory in the tries folder.
 type Entry struct {
-	Name     string    // Directory name (e.g., "2024-01-15-redis")
-	Path     string    // Full path
-	ModTime  time.Time // Last modification time
-	HasDate  bool      // Whether name starts with date prefix
-	BaseName string    // Name without date prefix (e.g., "redis")
+	Name       string    // Directory name (e.g., "2024-01-15-redis")
+	Path       string    // Full path
+	ModTime    time.Time // Last modification time
+	HasDate    bool      // Whether name starts with date prefix
+	BaseName   string    // Name without date prefix (e.g., "redis")
+	IsWorktree bool      // Whether this is a git worktree
 }
 
 var datePrefix = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}-`)
@@ -75,6 +79,66 @@ func LoadEntries(triesPath string) ([]*Entry, error) {
 	})
 
 	return result, nil
+}
+
+// LoadWorktreesForRepo loads worktrees in tries directory that belong to the given repo.
+func LoadWorktreesForRepo(repoPath string) ([]*Entry, error) {
+	triesPath := TriesPath()
+
+	// Run git worktree list in the repo
+	cmd := exec.Command("git", "-C", repoPath, "worktree", "list", "--porcelain")
+	output, err := cmd.Output()
+	if err != nil {
+		// Not a git repo or git not available
+		return nil, nil
+	}
+
+	// Parse porcelain output to get worktree paths
+	// Format:
+	// worktree /path/to/worktree
+	// HEAD abc123
+	// branch refs/heads/main (or "detached")
+	// <blank line>
+	var worktreePaths []string
+	scanner := bufio.NewScanner(strings.NewReader(string(output)))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "worktree ") {
+			wtPath := strings.TrimPrefix(line, "worktree ")
+			// Only include worktrees that are in the tries directory
+			if strings.HasPrefix(wtPath, triesPath) {
+				worktreePaths = append(worktreePaths, wtPath)
+			}
+		}
+	}
+
+	// Convert to entries
+	var result []*Entry
+	for _, wtPath := range worktreePaths {
+		entry, err := NewEntry(wtPath)
+		if err != nil || entry == nil {
+			continue
+		}
+		entry.IsWorktree = true
+		result = append(result, entry)
+	}
+
+	// Sort by modification time (newest first)
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].ModTime.After(result[j].ModTime)
+	})
+
+	return result, nil
+}
+
+// GetRepoRoot returns the git repository root for the given path.
+func GetRepoRoot(path string) (string, error) {
+	cmd := exec.Command("git", "-C", path, "rev-parse", "--show-toplevel")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(output)), nil
 }
 
 // Score calculates relevance score for an entry.

@@ -210,6 +210,47 @@ func runWorktree(args []string) error {
 		isGitRepo = true
 	}
 
+	// If git repo and no custom name → show TUI with existing worktrees
+	if isGitRepo && customName == "" {
+		return runWorktreeTUI(repoDir)
+	}
+
+	// Direct creation mode (with custom name or non-git directory)
+	return runWorktreeDirect(repoDir, pathArg, customName, isGitRepo)
+}
+
+// runWorktreeTUI shows TUI with existing worktrees from the repo
+func runWorktreeTUI(repoDir string) error {
+	result, err := selector.RunWorktree(repoDir)
+	if err != nil {
+		return err
+	}
+
+	if result == nil || result.Action == "cancel" {
+		return nil
+	}
+
+	switch result.Action {
+	case "cd":
+		// Jump to existing worktree
+		fmt.Printf("cd %q\n", result.Path)
+	case "worktree":
+		// Create new worktree
+		triesPath := entry.TriesPath()
+		finalName := resolveUniqueName(triesPath, time.Now().Format("2006-01-02"), result.NewName)
+		fullPath := filepath.Join(triesPath, fmt.Sprintf("%s-%s", time.Now().Format("2006-01-02"), finalName))
+
+		fmt.Printf("mkdir -p %q && ", fullPath)
+		fmt.Printf("echo %q && ", fmt.Sprintf("Using git worktree to create this trial from %s.", result.RepoPath))
+		fmt.Printf("(cd %q && git worktree add --detach %q 2>/dev/null || true) && ", result.RepoPath, fullPath)
+		fmt.Printf("cd %q\n", fullPath)
+	}
+
+	return nil
+}
+
+// runWorktreeDirect creates a worktree directly without TUI
+func runWorktreeDirect(repoDir, pathArg, customName string, isGitRepo bool) error {
 	// Determine the base name
 	baseName := customName
 	if baseName == "" {
@@ -323,8 +364,8 @@ Usage:
   try <name>           Jump to or create experiment
   try init [shell]     Output shell wrapper function
   try clone <url>      Clone repository into tries directory
-  try .                Create worktree from current git repo
-  try . <name>         Create worktree with custom name
+  try .                Show worktrees from current repo (TUI)
+  try . <name>         Create worktree with custom name (direct)
   try ./path           Create worktree from specified path
   try version          Show version
 
@@ -332,8 +373,8 @@ Examples:
   eval "$(try init bash)"   # Add to ~/.bashrc
   try redis                 # Create or jump to redis experiment
   try clone https://github.com/user/repo
-  try .                     # Worktree from current repo
-  try . experiment          # Worktree named 2024-01-15-experiment
+  try .                     # TUI: show existing worktrees + create
+  try . experiment          # Direct: create 2024-01-15-experiment
 
 Environment:
   TRY_PATH      Root directory (default: ~/tries)
