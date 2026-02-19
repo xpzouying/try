@@ -41,17 +41,29 @@ go build -o try .
 
 ### Step 2: Add to Shell Config
 
-Add this line to `~/.zshrc` (or `~/.bashrc`):
+Add the appropriate line to your shell config file:
 
 ```bash
-# IMPORTANT: Use the full path to the binary!
+# For zsh (add to ~/.zshrc)
 eval "$(/path/to/try init zsh)"
+
+# For bash (add to ~/.bashrc)
+eval "$(/path/to/try init bash)"
+
+# For fish (add to ~/.config/fish/config.fish)
+/path/to/try init fish | source
 ```
 
-Example:
+Example (zsh):
 ```bash
 echo 'eval "$(/Users/you/try/try init zsh)"' >> ~/.zshrc
 source ~/.zshrc
+```
+
+Example (bash):
+```bash
+echo 'eval "$(/Users/you/try/try init bash)"' >> ~/.bashrc
+source ~/.bashrc
 ```
 
 ### Step 3: Verify
