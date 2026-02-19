@@ -26,7 +26,7 @@ func run(args []string) error {
 		return nil
 	}
 	if containsAny(args, "-v", "--version", "version") {
-		fmt.Printf("try %s\n", version)
+		fmt.Fprintln(os.Stderr, "try", version)
 		return nil
 	}
 
@@ -118,7 +118,7 @@ func runClone(url string) error {
 }
 
 func printUsage() {
-	fmt.Println(`try - Manage experimental project directories
+	fmt.Fprintln(os.Stderr, `try - Manage experimental project directories
 
 Usage:
   try                  Interactive selector
