@@ -132,6 +132,13 @@ func runExec(query string) error {
 		fmt.Printf("echo %q && ", fmt.Sprintf("Deleted: %s", result.BaseName))
 		// If we're in the deleted directory, go to tries root
 		fmt.Printf("( cd %q 2>/dev/null || cd %q )\n", os.Getenv("PWD"), triesPath)
+	case "rename":
+		// Rename directory and cd into it
+		triesPath := entry.TriesPath()
+		fmt.Printf("cd %q && ", triesPath)
+		fmt.Printf("mv %q %q && ", result.BaseName, result.NewName)
+		fmt.Printf("echo %q && ", fmt.Sprintf("Renamed: %s → %s", result.BaseName, result.NewName))
+		fmt.Printf("cd %q\n", result.DestPath)
 	}
 
 	return nil

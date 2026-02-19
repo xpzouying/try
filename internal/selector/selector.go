@@ -15,10 +15,11 @@ import (
 
 // Result represents the outcome of the selector.
 type Result struct {
-	Action   string // "cd", "mkdir", "graduate", "delete", "cancel"
+	Action   string // "cd", "mkdir", "graduate", "delete", "rename", "cancel"
 	Path     string
-	DestPath string // For graduate: destination path
-	BaseName string // For graduate/delete: original directory name
+	DestPath string // For graduate/rename: destination path
+	BaseName string // For graduate/delete/rename: original directory name
+	NewName  string // For rename: new directory name
 }
 
 // Run launches the interactive selector and returns the result.
@@ -59,6 +60,7 @@ const (
 	modeList mode = iota
 	modeGraduate
 	modeDelete
+	modeRename
 )
 
 type model struct {
@@ -171,6 +173,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleGraduateKey(msg)
 		case modeDelete:
 			return m.handleDeleteKey(msg)
+		case modeRename:
+			return m.handleRenameKey(msg)
 		default:
 			return m.handleKey(msg)
 		}
@@ -212,6 +216,9 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyCtrlD:
 		return m.enterDeleteMode()
+
+	case tea.KeyCtrlR:
+		return m.enterRenameMode()
 
 	case tea.KeyBackspace:
 		if len(m.query) > 0 {
@@ -462,6 +469,128 @@ func (m model) confirmDelete() (tea.Model, tea.Cmd) {
 	return m, tea.Quit
 }
 
+func (m model) enterRenameMode() (tea.Model, tea.Cmd) {
+	// Can only rename an existing directory
+	if m.isCreateSelected() || len(m.filtered) == 0 {
+		return m, nil
+	}
+
+	selected := m.filtered[m.cursor].entry
+
+	m.mode = modeRename
+	m.dialogEntry = selected
+	m.dialogInput = selected.Name // Start with current name
+	m.dialogCursor = len(selected.Name)
+	m.dialogError = ""
+
+	return m, nil
+}
+
+func (m model) handleRenameKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.Type {
+	case tea.KeyEsc, tea.KeyCtrlC:
+		// Cancel rename mode
+		m.mode = modeList
+		m.dialogError = ""
+		return m, nil
+
+	case tea.KeyEnter:
+		// Confirm rename
+		return m.confirmRename()
+
+	case tea.KeyBackspace:
+		if m.dialogCursor > 0 {
+			m.dialogInput = m.dialogInput[:m.dialogCursor-1] + m.dialogInput[m.dialogCursor:]
+			m.dialogCursor--
+			m.dialogError = ""
+		}
+		return m, nil
+
+	case tea.KeyLeft, tea.KeyCtrlB:
+		if m.dialogCursor > 0 {
+			m.dialogCursor--
+		}
+		return m, nil
+
+	case tea.KeyRight, tea.KeyCtrlF:
+		if m.dialogCursor < len(m.dialogInput) {
+			m.dialogCursor++
+		}
+		return m, nil
+
+	case tea.KeyCtrlA:
+		m.dialogCursor = 0
+		return m, nil
+
+	case tea.KeyCtrlE:
+		m.dialogCursor = len(m.dialogInput)
+		return m, nil
+
+	case tea.KeyCtrlK:
+		m.dialogInput = m.dialogInput[:m.dialogCursor]
+		m.dialogError = ""
+		return m, nil
+
+	case tea.KeyCtrlW:
+		// Delete word backward
+		if m.dialogCursor > 0 {
+			newPos := wordBoundaryBackward(m.dialogInput, m.dialogCursor)
+			m.dialogInput = m.dialogInput[:newPos] + m.dialogInput[m.dialogCursor:]
+			m.dialogCursor = newPos
+			m.dialogError = ""
+		}
+		return m, nil
+
+	case tea.KeyRunes:
+		ch := string(msg.Runes)
+		// Allow alphanumeric, dash, underscore, dot, space
+		m.dialogInput = m.dialogInput[:m.dialogCursor] + ch + m.dialogInput[m.dialogCursor:]
+		m.dialogCursor += len(ch)
+		m.dialogError = ""
+		return m, nil
+	}
+
+	return m, nil
+}
+
+func (m model) confirmRename() (tea.Model, tea.Cmd) {
+	// Clean up name: trim spaces, replace spaces with dashes
+	newName := strings.TrimSpace(m.dialogInput)
+	newName = strings.ReplaceAll(newName, " ", "-")
+
+	if newName == "" {
+		m.dialogError = "Name cannot be empty"
+		return m, nil
+	}
+
+	if strings.Contains(newName, "/") {
+		m.dialogError = "Name cannot contain /"
+		return m, nil
+	}
+
+	// No change
+	if newName == m.dialogEntry.Name {
+		m.mode = modeList
+		return m, nil
+	}
+
+	// Check if destination already exists
+	newPath := filepath.Join(entry.TriesPath(), newName)
+	if _, err := os.Stat(newPath); err == nil {
+		m.dialogError = fmt.Sprintf("Directory exists: %s", newName)
+		return m, nil
+	}
+
+	m.result = &Result{
+		Action:   "rename",
+		Path:     m.dialogEntry.Path,
+		BaseName: m.dialogEntry.Name,
+		NewName:  newName,
+		DestPath: newPath,
+	}
+	return m, tea.Quit
+}
+
 // Styles - using vibrant colors similar to Ruby version
 var (
 	titleStyle = lipgloss.NewStyle().
@@ -522,6 +651,10 @@ var (
 	deleteStyle = lipgloss.NewStyle().
 			Bold(true).
 			Foreground(lipgloss.Color("196")) // Red for delete
+
+	renameStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("33")) // Blue for rename
 )
 
 func (m model) View() string {
@@ -530,6 +663,8 @@ func (m model) View() string {
 		return m.viewGraduateDialog()
 	case modeDelete:
 		return m.viewDeleteDialog()
+	case modeRename:
+		return m.viewRenameDialog()
 	}
 
 	var b strings.Builder
@@ -589,7 +724,7 @@ func (m model) View() string {
 
 	// Footer
 	b.WriteString("  ")
-	b.WriteString(helpStyle.Render("↑/↓ Navigate  Enter Select  Ctrl-T New  Ctrl-G Graduate  Ctrl-D Delete  Esc Cancel"))
+	b.WriteString(helpStyle.Render("↑/↓  Enter  ^T New  ^G Graduate  ^D Delete  ^R Rename  Esc"))
 
 	return b.String()
 }
@@ -690,6 +825,59 @@ func (m model) viewDeleteDialog() string {
 	b.WriteString(promptStyle.Render("Type YES to confirm: "))
 	b.WriteString(inputStyle.Render(m.dialogInput))
 	b.WriteString(cursorStyle.Render("█"))
+	b.WriteString("\n")
+
+	// Error message
+	if m.dialogError != "" {
+		b.WriteString("\n  ")
+		b.WriteString(errorStyle.Render("⚠ " + m.dialogError))
+		b.WriteString("\n")
+	}
+
+	// Separator
+	b.WriteString("\n")
+	b.WriteString(m.separator())
+	b.WriteString("\n")
+
+	// Footer
+	b.WriteString("  ")
+	b.WriteString(helpStyle.Render("Enter Confirm  Esc Cancel"))
+
+	return b.String()
+}
+
+func (m model) viewRenameDialog() string {
+	var b strings.Builder
+
+	// Header
+	b.WriteString("  ")
+	b.WriteString(renameStyle.Render("✏️  Rename"))
+	b.WriteString(titleStyle.Render(" - Rename Directory"))
+	b.WriteString("\n")
+
+	// Separator
+	b.WriteString(m.separator())
+	b.WriteString("\n\n")
+
+	// Current directory name
+	b.WriteString("  ")
+	b.WriteString(folderStyle.Render("📁 "))
+	b.WriteString(metaStyle.Render("Current: "))
+	b.WriteString(nameStyle.Render(m.dialogEntry.Name))
+	b.WriteString("\n\n")
+
+	// Input field
+	b.WriteString("  ")
+	b.WriteString(promptStyle.Render("New name: "))
+	// Render input with cursor
+	if m.dialogCursor >= len(m.dialogInput) {
+		b.WriteString(inputStyle.Render(m.dialogInput))
+		b.WriteString(cursorStyle.Render("█"))
+	} else {
+		b.WriteString(inputStyle.Render(m.dialogInput[:m.dialogCursor]))
+		b.WriteString(cursorStyle.Render(string(m.dialogInput[m.dialogCursor])))
+		b.WriteString(inputStyle.Render(m.dialogInput[m.dialogCursor+1:]))
+	}
 	b.WriteString("\n")
 
 	// Error message
