@@ -15,8 +15,10 @@ import (
 
 // Result represents the outcome of the selector.
 type Result struct {
-	Action string // "cd", "mkdir", "cancel"
-	Path   string
+	Action   string // "cd", "mkdir", "graduate", "cancel"
+	Path     string
+	DestPath string // For graduate: destination path
+	BaseName string // For graduate: original directory name (for symlink)
 }
 
 // Run launches the interactive selector and returns the result.
@@ -50,6 +52,14 @@ func Run(initialQuery string) (*Result, error) {
 	return finalModel.(model).result, nil
 }
 
+// UI mode
+type mode int
+
+const (
+	modeList mode = iota
+	modeGraduate
+)
+
 type model struct {
 	entries      []*entry.Entry
 	filtered     []filteredEntry
@@ -60,6 +70,13 @@ type model struct {
 	result       *Result
 	now          time.Time
 	showCreate   bool // Whether to show "Create new" option
+
+	// Dialog mode
+	mode         mode
+	dialogInput  string // Input buffer for dialog
+	dialogCursor int    // Cursor position in dialog input
+	dialogError  string // Error message to display
+	dialogEntry  *entry.Entry // Entry being operated on
 }
 
 type filteredEntry struct {
@@ -148,7 +165,12 @@ func (m model) Init() tea.Cmd {
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		return m.handleKey(msg)
+		switch m.mode {
+		case modeGraduate:
+			return m.handleGraduateKey(msg)
+		default:
+			return m.handleKey(msg)
+		}
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -181,6 +203,9 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyCtrlT:
 		return m.createNew()
+
+	case tea.KeyCtrlG:
+		return m.enterGraduateMode()
 
 	case tea.KeyBackspace:
 		if len(m.query) > 0 {
@@ -229,6 +254,144 @@ func (m model) createNew() (tea.Model, tea.Cmd) {
 		Path:   path,
 	}
 	return m, tea.Quit
+}
+
+func (m model) enterGraduateMode() (tea.Model, tea.Cmd) {
+	// Can only graduate an existing directory
+	if m.isCreateSelected() || len(m.filtered) == 0 {
+		return m, nil
+	}
+
+	selected := m.filtered[m.cursor].entry
+
+	// Default destination: projects_dir/basename
+	destPath := filepath.Join(entry.ProjectsPath(), selected.BaseName)
+
+	m.mode = modeGraduate
+	m.dialogEntry = selected
+	m.dialogInput = destPath
+	m.dialogCursor = len(destPath)
+	m.dialogError = ""
+
+	return m, nil
+}
+
+func (m model) handleGraduateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.Type {
+	case tea.KeyEsc, tea.KeyCtrlC:
+		// Cancel graduate mode
+		m.mode = modeList
+		m.dialogError = ""
+		return m, nil
+
+	case tea.KeyEnter:
+		// Confirm graduate
+		return m.confirmGraduate()
+
+	case tea.KeyBackspace:
+		if m.dialogCursor > 0 {
+			m.dialogInput = m.dialogInput[:m.dialogCursor-1] + m.dialogInput[m.dialogCursor:]
+			m.dialogCursor--
+			m.dialogError = ""
+		}
+		return m, nil
+
+	case tea.KeyLeft, tea.KeyCtrlB:
+		if m.dialogCursor > 0 {
+			m.dialogCursor--
+		}
+		return m, nil
+
+	case tea.KeyRight, tea.KeyCtrlF:
+		if m.dialogCursor < len(m.dialogInput) {
+			m.dialogCursor++
+		}
+		return m, nil
+
+	case tea.KeyCtrlA:
+		m.dialogCursor = 0
+		return m, nil
+
+	case tea.KeyCtrlE:
+		m.dialogCursor = len(m.dialogInput)
+		return m, nil
+
+	case tea.KeyCtrlK:
+		m.dialogInput = m.dialogInput[:m.dialogCursor]
+		m.dialogError = ""
+		return m, nil
+
+	case tea.KeyCtrlW:
+		// Delete word backward
+		if m.dialogCursor > 0 {
+			newPos := wordBoundaryBackward(m.dialogInput, m.dialogCursor)
+			m.dialogInput = m.dialogInput[:newPos] + m.dialogInput[m.dialogCursor:]
+			m.dialogCursor = newPos
+			m.dialogError = ""
+		}
+		return m, nil
+
+	case tea.KeyRunes:
+		ch := string(msg.Runes)
+		m.dialogInput = m.dialogInput[:m.dialogCursor] + ch + m.dialogInput[m.dialogCursor:]
+		m.dialogCursor += len(ch)
+		m.dialogError = ""
+		return m, nil
+	}
+
+	return m, nil
+}
+
+func (m model) confirmGraduate() (tea.Model, tea.Cmd) {
+	dest := strings.TrimSpace(m.dialogInput)
+
+	if dest == "" {
+		m.dialogError = "Destination cannot be empty"
+		return m, nil
+	}
+
+	// Expand home directory
+	if strings.HasPrefix(dest, "~") {
+		home, _ := os.UserHomeDir()
+		dest = filepath.Join(home, dest[1:])
+	}
+
+	// Check if destination already exists
+	if _, err := os.Stat(dest); err == nil {
+		m.dialogError = "Destination already exists"
+		return m, nil
+	}
+
+	// Check if parent directory exists
+	parent := filepath.Dir(dest)
+	if _, err := os.Stat(parent); os.IsNotExist(err) {
+		m.dialogError = "Parent directory does not exist"
+		return m, nil
+	}
+
+	m.result = &Result{
+		Action:   "graduate",
+		Path:     m.dialogEntry.Path,
+		DestPath: dest,
+		BaseName: m.dialogEntry.Name,
+	}
+	return m, tea.Quit
+}
+
+func wordBoundaryBackward(s string, pos int) int {
+	if pos <= 0 {
+		return 0
+	}
+	// Skip trailing spaces
+	i := pos - 1
+	for i > 0 && s[i] == ' ' {
+		i--
+	}
+	// Skip non-spaces (word characters)
+	for i > 0 && s[i-1] != ' ' && s[i-1] != '/' {
+		i--
+	}
+	return i
 }
 
 // Styles - using vibrant colors similar to Ruby version
@@ -280,9 +443,20 @@ var (
 
 	helpStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("244"))
+
+	graduateStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("208")) // Orange for graduate
+
+	errorStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("196")) // Red for errors
 )
 
 func (m model) View() string {
+	if m.mode == modeGraduate {
+		return m.viewGraduateDialog()
+	}
+
 	var b strings.Builder
 
 	// Header
@@ -340,7 +514,74 @@ func (m model) View() string {
 
 	// Footer
 	b.WriteString("  ")
-	b.WriteString(helpStyle.Render("↑/↓ Navigate  Enter Select  Ctrl-T New  Esc Cancel"))
+	b.WriteString(helpStyle.Render("↑/↓ Navigate  Enter Select  Ctrl-T New  Ctrl-G Graduate  Esc Cancel"))
+
+	return b.String()
+}
+
+func (m model) viewGraduateDialog() string {
+	var b strings.Builder
+
+	// Header
+	b.WriteString("  ")
+	b.WriteString(graduateStyle.Render("🚀 Graduate"))
+	b.WriteString(titleStyle.Render(" - Promote to Project"))
+	b.WriteString("\n")
+
+	// Separator
+	b.WriteString(m.separator())
+	b.WriteString("\n\n")
+
+	// Source directory
+	b.WriteString("  ")
+	b.WriteString(folderStyle.Render("📁 "))
+	b.WriteString(nameStyle.Render(m.dialogEntry.Name))
+	b.WriteString("\n\n")
+
+	// Destination hint
+	envHint := "$TRY_PROJECTS"
+	if os.Getenv("TRY_PROJECTS") == "" {
+		envHint = "parent of $TRY_PATH"
+	}
+	projectsDir := entry.ProjectsPath()
+	b.WriteString("  ")
+	b.WriteString(metaStyle.Render(fmt.Sprintf("Destination (%s: %s)", envHint, projectsDir)))
+	b.WriteString("\n\n")
+
+	// Input field
+	b.WriteString("  ")
+	b.WriteString(promptStyle.Render("Move to: "))
+	// Render input with cursor
+	if m.dialogCursor >= len(m.dialogInput) {
+		b.WriteString(inputStyle.Render(m.dialogInput))
+		b.WriteString(cursorStyle.Render("█"))
+	} else {
+		b.WriteString(inputStyle.Render(m.dialogInput[:m.dialogCursor]))
+		b.WriteString(cursorStyle.Render(string(m.dialogInput[m.dialogCursor])))
+		b.WriteString(inputStyle.Render(m.dialogInput[m.dialogCursor+1:]))
+	}
+	b.WriteString("\n\n")
+
+	// Symlink hint
+	b.WriteString("  ")
+	b.WriteString(metaStyle.Render("A symlink will be left in the tries directory"))
+	b.WriteString("\n")
+
+	// Error message
+	if m.dialogError != "" {
+		b.WriteString("\n  ")
+		b.WriteString(errorStyle.Render("⚠ " + m.dialogError))
+		b.WriteString("\n")
+	}
+
+	// Separator
+	b.WriteString("\n")
+	b.WriteString(m.separator())
+	b.WriteString("\n")
+
+	// Footer
+	b.WriteString("  ")
+	b.WriteString(helpStyle.Render("Enter Confirm  Esc Cancel"))
 
 	return b.String()
 }

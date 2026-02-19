@@ -4,7 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 
+	"github.com/xpzouying/try/internal/entry"
 	"github.com/xpzouying/try/internal/selector"
 	"github.com/xpzouying/try/internal/shell"
 )
@@ -106,6 +108,23 @@ func runExec(query string) error {
 	case "mkdir":
 		// Create directory and cd into it
 		fmt.Printf("mkdir -p %q && cd %q\n", result.Path, result.Path)
+	case "graduate":
+		// Move directory to projects and create symlink
+		symlinkPath := filepath.Join(entry.TriesPath(), result.BaseName)
+		// Check if source is a git worktree (has .git file, not directory)
+		gitFile := filepath.Join(result.Path, ".git")
+		info, err := os.Stat(gitFile)
+		isWorktree := err == nil && !info.IsDir()
+
+		if isWorktree {
+			// Use git worktree move for proper bookkeeping
+			fmt.Printf("git worktree move %q %q && ", result.Path, result.DestPath)
+		} else {
+			fmt.Printf("mv %q %q && ", result.Path, result.DestPath)
+		}
+		fmt.Printf("ln -s %q %q && ", result.DestPath, symlinkPath)
+		fmt.Printf("echo %q && ", fmt.Sprintf("Graduated: %s → %s", result.BaseName, result.DestPath))
+		fmt.Printf("cd %q\n", result.DestPath)
 	}
 
 	return nil

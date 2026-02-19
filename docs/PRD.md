@@ -43,7 +43,7 @@ Single binary CLI tool to manage experimental project directories. No runtime de
 - [ ] Auto-detect git URL and clone
 - [ ] Ctrl-D delete with confirmation
 - [ ] Ctrl-R rename directory
-- [ ] Ctrl-G graduate to projects directory
+- [x] Ctrl-G graduate to projects directory
 
 ### Phase 4: Polish
 - [ ] Unit tests for fuzzy, entry, shell
