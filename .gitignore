@@ -1,0 +1,13 @@
+# Binary
+try
+try-*
+
+# Go
+*.exe
+*.test
+*.out
+
+# IDE
+.idea/
+.vscode/
+*.swp
