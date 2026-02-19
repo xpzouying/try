@@ -19,6 +19,7 @@ type Entry struct {
 	HasDate    bool      // Whether name starts with date prefix
 	BaseName   string    // Name without date prefix (e.g., "redis")
 	IsWorktree bool      // Whether this is a git worktree
+	SourceRepo string    // For worktrees: name of the source repository
 }
 
 var datePrefix = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}-`)
@@ -42,9 +43,11 @@ func NewEntry(path string) (*Entry, error) {
 
 	// Detect if this is a git worktree (.git is a file, not a directory)
 	isWorktree := false
+	sourceRepo := ""
 	gitPath := filepath.Join(path, ".git")
 	if gitInfo, err := os.Stat(gitPath); err == nil && !gitInfo.IsDir() {
 		isWorktree = true
+		sourceRepo = parseWorktreeSource(gitPath)
 	}
 
 	return &Entry{
@@ -54,6 +57,7 @@ func NewEntry(path string) (*Entry, error) {
 		HasDate:    hasDate,
 		BaseName:   baseName,
 		IsWorktree: isWorktree,
+		SourceRepo: sourceRepo,
 	}, nil
 }
 
@@ -195,4 +199,30 @@ func expandHome(path string) string {
 		return filepath.Join(home, path[1:])
 	}
 	return path
+}
+
+// parseWorktreeSource extracts the source repository name from a worktree's .git file.
+// The .git file contains: gitdir: /path/to/repo/.git/worktrees/worktree-name
+func parseWorktreeSource(gitFilePath string) string {
+	content, err := os.ReadFile(gitFilePath)
+	if err != nil {
+		return ""
+	}
+
+	line := strings.TrimSpace(string(content))
+	if !strings.HasPrefix(line, "gitdir: ") {
+		return ""
+	}
+
+	// Extract: /path/to/repo/.git/worktrees/worktree-name
+	gitdir := strings.TrimPrefix(line, "gitdir: ")
+
+	// Find ".git/worktrees/" and extract the repo path before it
+	idx := strings.Index(gitdir, "/.git/worktrees/")
+	if idx == -1 {
+		return ""
+	}
+
+	repoPath := gitdir[:idx]
+	return filepath.Base(repoPath)
 }

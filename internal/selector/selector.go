@@ -662,6 +662,9 @@ var (
 	worktreeStyle = lipgloss.NewStyle().
 			Bold(true).
 			Foreground(lipgloss.Color("42")) // Green for worktree
+
+	sourceStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("245")) // Gray for source repo
 )
 
 func (m model) View() string {
@@ -973,6 +976,11 @@ func (m model) renderEntry(idx int, selected bool) string {
 	scoreStr := fmt.Sprintf("%.1f", fe.score)
 	meta := fmt.Sprintf("  %s, %s", age, scoreStr)
 	line.WriteString(metaStyle.Render(meta))
+
+	// Source repo for worktrees
+	if fe.entry.IsWorktree && fe.entry.SourceRepo != "" {
+		line.WriteString(sourceStyle.Render(fmt.Sprintf("  ← %s", fe.entry.SourceRepo)))
+	}
 
 	// Apply selected background
 	result := line.String()
