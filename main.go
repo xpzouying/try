@@ -63,6 +63,10 @@ func run(args []string) error {
 		}
 		return runClone(args[1])
 	default:
+		// Auto-detect git URL and clone
+		if isGitURL(args[0]) {
+			return runClone(args[0])
+		}
 		// Treat as search query
 		return runExec(args[0])
 	}
@@ -293,6 +297,12 @@ func resolveUniqueName(triesPath, datePrefix, baseName string) string {
 	}
 }
 
+// isGitURL checks if the given string looks like a git URL
+func isGitURL(s string) bool {
+	_, _, err := parseGitURI(s)
+	return err == nil
+}
+
 // parseGitURI extracts user and repo from various git URL formats
 func parseGitURI(uri string) (user, repo string, err error) {
 	// Remove .git suffix if present
@@ -331,6 +341,7 @@ func printUsage() {
 Usage:
   try                  Interactive selector (TUI)
   try <name>           Jump to or create experiment
+  try <git-url>        Auto-detect git URL and clone
   try init [shell]     Output shell wrapper function
   try clone <url>      Clone repository into tries directory
   try .                Create worktree from current git repo
@@ -341,7 +352,7 @@ Usage:
 Examples:
   eval "$(try init bash)"   # Add to ~/.bashrc
   try redis                 # Create or jump to redis experiment
-  try clone https://github.com/user/repo
+  try https://github.com/user/repo  # Auto-detect and clone
   try .                     # Create worktree: 2024-01-15-reponame
   try . feature             # Create worktree: 2024-01-15-feature
 
