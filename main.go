@@ -39,6 +39,11 @@ func run(args []string) error {
 		return runExec("")
 	}
 
+	// Handle . and ./path for worktree creation
+	if strings.HasPrefix(args[0], ".") {
+		return runWorktree(args)
+	}
+
 	switch args[0] {
 	case "init":
 		return runInit(args[1:])
@@ -173,6 +178,111 @@ func runClone(gitURL string) error {
 	return nil
 }
 
+// runWorktree handles "try ." and "try ./path" commands
+func runWorktree(args []string) error {
+	// Ensure tries directory exists
+	if err := selector.EnsureTriesDir(); err != nil {
+		return fmt.Errorf("create tries directory: %w", err)
+	}
+
+	pathArg := args[0]
+	customName := ""
+	if len(args) > 1 {
+		customName = strings.Join(args[1:], "-")
+	}
+
+	// Expand the path
+	repoDir, err := filepath.Abs(pathArg)
+	if err != nil {
+		return fmt.Errorf("invalid path: %w", err)
+	}
+
+	// Check if directory exists
+	info, err := os.Stat(repoDir)
+	if err != nil || !info.IsDir() {
+		return fmt.Errorf("not a directory: %s", pathArg)
+	}
+
+	// Check if it's a git repository
+	gitPath := filepath.Join(repoDir, ".git")
+	isGitRepo := false
+	if _, err := os.Stat(gitPath); err == nil {
+		isGitRepo = true
+	}
+
+	// Determine the base name
+	baseName := customName
+	if baseName == "" {
+		// Use the repository name
+		baseName = filepath.Base(repoDir)
+		// Try to resolve symlinks for better name
+		if realPath, err := filepath.EvalSymlinks(repoDir); err == nil {
+			baseName = filepath.Base(realPath)
+		}
+	}
+
+	// Replace spaces with dashes
+	baseName = strings.ReplaceAll(baseName, " ", "-")
+
+	// Generate unique directory name
+	datePrefix := time.Now().Format("2006-01-02")
+	triesPath := entry.TriesPath()
+	finalName := resolveUniqueName(triesPath, datePrefix, baseName)
+	fullPath := filepath.Join(triesPath, fmt.Sprintf("%s-%s", datePrefix, finalName))
+
+	// Output shell commands
+	if isGitRepo {
+		// Create worktree
+		fmt.Printf("mkdir -p %q && ", fullPath)
+		fmt.Printf("echo %q && ", fmt.Sprintf("Using git worktree to create this trial from %s.", repoDir))
+		// Use a subshell to handle worktree creation gracefully
+		fmt.Printf("(cd %q && git worktree add --detach %q 2>/dev/null || true) && ", repoDir, fullPath)
+		fmt.Printf("cd %q\n", fullPath)
+	} else {
+		// Not a git repo, just create directory
+		fmt.Fprintf(os.Stderr, "Note: %s is not a git repository, creating plain directory.\n", pathArg)
+		fmt.Printf("mkdir -p %q && cd %q\n", fullPath, fullPath)
+	}
+
+	return nil
+}
+
+// resolveUniqueName generates a unique directory name with versioning
+func resolveUniqueName(triesPath, datePrefix, baseName string) string {
+	initial := fmt.Sprintf("%s-%s", datePrefix, baseName)
+	initialPath := filepath.Join(triesPath, initial)
+
+	// If doesn't exist, use as-is
+	if _, err := os.Stat(initialPath); os.IsNotExist(err) {
+		return baseName
+	}
+
+	// Check if baseName ends with a number
+	re := regexp.MustCompile(`^(.*?)(\d+)$`)
+	if matches := re.FindStringSubmatch(baseName); matches != nil {
+		stem := matches[1]
+		n, _ := fmt.Sscanf(matches[2], "%d", new(int))
+		candidateNum := n + 1
+		for {
+			candidateName := fmt.Sprintf("%s%d", stem, candidateNum)
+			candidatePath := filepath.Join(triesPath, fmt.Sprintf("%s-%s", datePrefix, candidateName))
+			if _, err := os.Stat(candidatePath); os.IsNotExist(err) {
+				return candidateName
+			}
+			candidateNum++
+		}
+	}
+
+	// No numeric suffix, add -2, -3, etc.
+	for i := 2; ; i++ {
+		candidateName := fmt.Sprintf("%s-%d", baseName, i)
+		candidatePath := filepath.Join(triesPath, fmt.Sprintf("%s-%s", datePrefix, candidateName))
+		if _, err := os.Stat(candidatePath); os.IsNotExist(err) {
+			return candidateName
+		}
+	}
+}
+
 // parseGitURI extracts user and repo from various git URL formats
 func parseGitURI(uri string) (user, repo string, err error) {
 	// Remove .git suffix if present
@@ -213,12 +323,17 @@ Usage:
   try <name>           Jump to or create experiment
   try init [shell]     Output shell wrapper function
   try clone <url>      Clone repository into tries directory
+  try .                Create worktree from current git repo
+  try . <name>         Create worktree with custom name
+  try ./path           Create worktree from specified path
   try version          Show version
 
 Examples:
   eval "$(try init bash)"   # Add to ~/.bashrc
   try redis                 # Create or jump to redis experiment
   try clone https://github.com/user/repo
+  try .                     # Worktree from current repo
+  try . experiment          # Worktree named 2024-01-15-experiment
 
 Environment:
   TRY_PATH      Root directory (default: ~/tries)

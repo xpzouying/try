@@ -39,7 +39,7 @@ Single binary CLI tool to manage experimental project directories. No runtime de
 
 ### Phase 3: Full Features (Current)
 - [x] `try clone <url>` - Git clone to tries directory
-- [ ] `try .` / `try ./path` - Create worktree for current repo
+- [x] `try .` / `try ./path` - Create worktree for current repo
 - [ ] Auto-detect git URL and clone
 - [x] Ctrl-D delete with confirmation
 - [x] Ctrl-R rename directory
@@ -62,7 +62,7 @@ Single binary CLI tool to manage experimental project directories. No runtime de
 | `try -h` / `try help` | ✅ | Show help |
 | `try version` | ✅ | Show version |
 | `try clone <url>` | ✅ | Clone git repo to tries dir |
-| `try .` | ❌ | Create worktree for current repo |
+| `try .` | ✅ | Create worktree for current repo |
 | `try <git-url>` | ❌ | Auto-detect and clone |
 
 ## Architecture
