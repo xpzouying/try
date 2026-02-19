@@ -41,12 +41,11 @@ func bashWrapper(tryPath string) string {
 # Add this to your ~/.bashrc
 
 try() {
-  case "$1" in
-    init|help|version|-h|--help|-v|--version)
-      %[1]q "$@"
-      return $?
-      ;;
-  esac
+  # 'init' must bypass exec (it generates this wrapper)
+  if [[ "$1" == "init" ]]; then
+    %[1]q "$@"
+    return $?
+  fi
   local output
   output=$(%[1]q exec "$@")
   local exit_code=$?
@@ -63,12 +62,11 @@ func zshWrapper(tryPath string) string {
 # Add this to your ~/.zshrc
 
 try() {
-  case "$1" in
-    init|help|version|-h|--help|-v|--version)
-      %[1]q "$@"
-      return $?
-      ;;
-  esac
+  # 'init' must bypass exec (it generates this wrapper)
+  if [[ "$1" == "init" ]]; then
+    %[1]q "$@"
+    return $?
+  fi
   local output
   output=$(%[1]q exec "$@")
   local exit_code=$?
@@ -85,10 +83,10 @@ func fishWrapper(tryPath string) string {
 # Add this to your ~/.config/fish/config.fish
 
 function try
-  switch "$argv[1]"
-    case init help version -h --help -v --version
-      %[1]s $argv
-      return $status
+  # 'init' must bypass exec (it generates this wrapper)
+  if test "$argv[1]" = "init"
+    %[1]s $argv
+    return $status
   end
   set -l output (%[1]s exec $argv)
   set -l exit_code $status

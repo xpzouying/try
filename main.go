@@ -19,6 +19,17 @@ func main() {
 }
 
 func run(args []string) error {
+	// Check global flags first (like Ruby version)
+	// This handles: try exec -h, try -h, try foo -h, etc.
+	if containsAny(args, "-h", "--help", "help") {
+		printUsage()
+		return nil
+	}
+	if containsAny(args, "-v", "--version", "version") {
+		fmt.Printf("try %s\n", version)
+		return nil
+	}
+
 	if len(args) == 0 {
 		return runExec("")
 	}
@@ -37,16 +48,21 @@ func run(args []string) error {
 			return fmt.Errorf("clone requires a URL argument")
 		}
 		return runClone(args[1])
-	case "version", "--version", "-v":
-		fmt.Printf("try %s\n", version)
-		return nil
-	case "help", "--help", "-h":
-		printUsage()
-		return nil
 	default:
 		// Treat as search query
 		return runExec(args[0])
 	}
+}
+
+func containsAny(args []string, targets ...string) bool {
+	for _, arg := range args {
+		for _, target := range targets {
+			if arg == target {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func runInit(args []string) error {
