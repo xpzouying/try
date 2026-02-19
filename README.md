@@ -34,6 +34,56 @@ Add to your shell config (`~/.zshrc` or `~/.bashrc`):
 eval "$(try init bash)"   # or: try init zsh
 ```
 
+## Tutorial
+
+### First Run
+
+```bash
+# Create your first experiment
+$ try redis-test
+# Creates ~/src/tries/2024-01-15-redis-test and cd into it
+
+# Start coding...
+$ git init && echo "# Redis Test" > README.md
+```
+
+### Finding Experiments
+
+```bash
+# Open interactive selector
+$ try
+
+# Type to fuzzy search, e.g., "red" matches "redis-test"
+# Use ↑/↓ to navigate, Enter to select
+```
+
+### Daily Workflow
+
+```bash
+# Quick jump to existing experiment
+$ try redis      # Fuzzy matches "2024-01-15-redis-test"
+
+# Create another experiment
+$ try kafka-consumer
+
+# Later, find it again
+$ try kafka      # Jumps right in
+```
+
+### Organizing Experiments
+
+```bash
+# Your tries directory grows over time:
+~/src/tries/
+├── 2024-01-10-go-generics/
+├── 2024-01-12-docker-compose/
+├── 2024-01-15-redis-test/
+└── 2024-01-15-kafka-consumer/
+
+# Recent directories appear first in selector
+# Date prefix keeps things organized chronologically
+```
+
 ## Usage
 
 ```bash
@@ -48,12 +98,11 @@ try .                # Create worktree for current repo
 | Key | Action |
 |-----|--------|
 | `↑/↓` or `Ctrl-P/N` | Navigate |
-| `Enter` | Select directory |
-| `Ctrl-T` | Create new experiment |
-| `Ctrl-D` | Delete selected |
-| `Ctrl-R` | Rename selected |
-| `Ctrl-G` | Graduate to projects |
-| `Esc` | Exit |
+| `Enter` | Select directory (or create if no match) |
+| `Ctrl-T` | Create new experiment with current query |
+| `Esc` or `Ctrl-C` | Exit |
+
+*Coming soon: Ctrl-D (delete), Ctrl-R (rename), Ctrl-G (graduate)*
 
 ## Configuration
 
