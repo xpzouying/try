@@ -15,10 +15,10 @@ import (
 
 // Result represents the outcome of the selector.
 type Result struct {
-	Action   string // "cd", "mkdir", "graduate", "cancel"
+	Action   string // "cd", "mkdir", "graduate", "delete", "cancel"
 	Path     string
 	DestPath string // For graduate: destination path
-	BaseName string // For graduate: original directory name (for symlink)
+	BaseName string // For graduate/delete: original directory name
 }
 
 // Run launches the interactive selector and returns the result.
@@ -58,6 +58,7 @@ type mode int
 const (
 	modeList mode = iota
 	modeGraduate
+	modeDelete
 )
 
 type model struct {
@@ -168,6 +169,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch m.mode {
 		case modeGraduate:
 			return m.handleGraduateKey(msg)
+		case modeDelete:
+			return m.handleDeleteKey(msg)
 		default:
 			return m.handleKey(msg)
 		}
@@ -206,6 +209,9 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyCtrlG:
 		return m.enterGraduateMode()
+
+	case tea.KeyCtrlD:
+		return m.enterDeleteMode()
 
 	case tea.KeyBackspace:
 		if len(m.query) > 0 {
@@ -394,6 +400,68 @@ func wordBoundaryBackward(s string, pos int) int {
 	return i
 }
 
+func (m model) enterDeleteMode() (tea.Model, tea.Cmd) {
+	// Can only delete an existing directory
+	if m.isCreateSelected() || len(m.filtered) == 0 {
+		return m, nil
+	}
+
+	selected := m.filtered[m.cursor].entry
+
+	m.mode = modeDelete
+	m.dialogEntry = selected
+	m.dialogInput = ""
+	m.dialogCursor = 0
+	m.dialogError = ""
+
+	return m, nil
+}
+
+func (m model) handleDeleteKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.Type {
+	case tea.KeyEsc, tea.KeyCtrlC:
+		// Cancel delete mode
+		m.mode = modeList
+		m.dialogError = ""
+		return m, nil
+
+	case tea.KeyEnter:
+		// Confirm delete
+		return m.confirmDelete()
+
+	case tea.KeyBackspace:
+		if m.dialogCursor > 0 {
+			m.dialogInput = m.dialogInput[:m.dialogCursor-1] + m.dialogInput[m.dialogCursor:]
+			m.dialogCursor--
+			m.dialogError = ""
+		}
+		return m, nil
+
+	case tea.KeyRunes:
+		ch := string(msg.Runes)
+		m.dialogInput = m.dialogInput[:m.dialogCursor] + ch + m.dialogInput[m.dialogCursor:]
+		m.dialogCursor += len(ch)
+		m.dialogError = ""
+		return m, nil
+	}
+
+	return m, nil
+}
+
+func (m model) confirmDelete() (tea.Model, tea.Cmd) {
+	if strings.ToUpper(strings.TrimSpace(m.dialogInput)) != "YES" {
+		m.dialogError = "Type YES to confirm deletion"
+		return m, nil
+	}
+
+	m.result = &Result{
+		Action:   "delete",
+		Path:     m.dialogEntry.Path,
+		BaseName: m.dialogEntry.Name,
+	}
+	return m, tea.Quit
+}
+
 // Styles - using vibrant colors similar to Ruby version
 var (
 	titleStyle = lipgloss.NewStyle().
@@ -450,11 +518,18 @@ var (
 
 	errorStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("196")) // Red for errors
+
+	deleteStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("196")) // Red for delete
 )
 
 func (m model) View() string {
-	if m.mode == modeGraduate {
+	switch m.mode {
+	case modeGraduate:
 		return m.viewGraduateDialog()
+	case modeDelete:
+		return m.viewDeleteDialog()
 	}
 
 	var b strings.Builder
@@ -514,7 +589,7 @@ func (m model) View() string {
 
 	// Footer
 	b.WriteString("  ")
-	b.WriteString(helpStyle.Render("↑/↓ Navigate  Enter Select  Ctrl-T New  Ctrl-G Graduate  Esc Cancel"))
+	b.WriteString(helpStyle.Render("↑/↓ Navigate  Enter Select  Ctrl-T New  Ctrl-G Graduate  Ctrl-D Delete  Esc Cancel"))
 
 	return b.String()
 }
@@ -565,6 +640,56 @@ func (m model) viewGraduateDialog() string {
 	// Symlink hint
 	b.WriteString("  ")
 	b.WriteString(metaStyle.Render("A symlink will be left in the tries directory"))
+	b.WriteString("\n")
+
+	// Error message
+	if m.dialogError != "" {
+		b.WriteString("\n  ")
+		b.WriteString(errorStyle.Render("⚠ " + m.dialogError))
+		b.WriteString("\n")
+	}
+
+	// Separator
+	b.WriteString("\n")
+	b.WriteString(m.separator())
+	b.WriteString("\n")
+
+	// Footer
+	b.WriteString("  ")
+	b.WriteString(helpStyle.Render("Enter Confirm  Esc Cancel"))
+
+	return b.String()
+}
+
+func (m model) viewDeleteDialog() string {
+	var b strings.Builder
+
+	// Header
+	b.WriteString("  ")
+	b.WriteString(deleteStyle.Render("🗑️  Delete"))
+	b.WriteString(titleStyle.Render(" - Remove Directory"))
+	b.WriteString("\n")
+
+	// Separator
+	b.WriteString(m.separator())
+	b.WriteString("\n\n")
+
+	// Directory to delete
+	b.WriteString("  ")
+	b.WriteString(deleteStyle.Render("📁 "))
+	b.WriteString(nameStyle.Render(m.dialogEntry.Name))
+	b.WriteString("\n\n")
+
+	// Warning
+	b.WriteString("  ")
+	b.WriteString(errorStyle.Render("⚠ This will permanently delete the directory and all its contents!"))
+	b.WriteString("\n\n")
+
+	// Input field
+	b.WriteString("  ")
+	b.WriteString(promptStyle.Render("Type YES to confirm: "))
+	b.WriteString(inputStyle.Render(m.dialogInput))
+	b.WriteString(cursorStyle.Render("█"))
 	b.WriteString("\n")
 
 	// Error message

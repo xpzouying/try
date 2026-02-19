@@ -125,6 +125,13 @@ func runExec(query string) error {
 		fmt.Printf("ln -s %q %q && ", result.DestPath, symlinkPath)
 		fmt.Printf("echo %q && ", fmt.Sprintf("Graduated: %s → %s", result.BaseName, result.DestPath))
 		fmt.Printf("cd %q\n", result.DestPath)
+	case "delete":
+		// Delete directory (stay in current directory or go to tries root)
+		triesPath := entry.TriesPath()
+		fmt.Printf("rm -rf %q && ", result.Path)
+		fmt.Printf("echo %q && ", fmt.Sprintf("Deleted: %s", result.BaseName))
+		// If we're in the deleted directory, go to tries root
+		fmt.Printf("( cd %q 2>/dev/null || cd %q )\n", os.Getenv("PWD"), triesPath)
 	}
 
 	return nil

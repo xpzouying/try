@@ -41,7 +41,7 @@ Single binary CLI tool to manage experimental project directories. No runtime de
 - [ ] `try clone <url>` - Git clone to tries directory
 - [ ] `try .` / `try ./path` - Create worktree for current repo
 - [ ] Auto-detect git URL and clone
-- [ ] Ctrl-D delete with confirmation
+- [x] Ctrl-D delete with confirmation
 - [ ] Ctrl-R rename directory
 - [x] Ctrl-G graduate to projects directory
 
