@@ -28,10 +28,37 @@ go build -o try .
 
 ## Setup
 
-Add to your shell config (`~/.zshrc` or `~/.bashrc`):
+### Step 1: Build or Install
 
 ```bash
-eval "$(try init bash)"   # or: try init zsh
+# Build locally
+git clone https://github.com/xpzouying/try
+cd try
+go build -o try .
+
+# Note the full path, e.g., /Users/you/try/try
+```
+
+### Step 2: Add to Shell Config
+
+Add this line to `~/.zshrc` (or `~/.bashrc`):
+
+```bash
+# IMPORTANT: Use the full path to the binary!
+eval "$(/path/to/try init zsh)"
+```
+
+Example:
+```bash
+echo 'eval "$(/Users/you/try/try init zsh)"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+### Step 3: Verify
+
+```bash
+type try
+# Should show: try is a shell function
 ```
 
 ## Tutorial

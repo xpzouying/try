@@ -117,6 +117,6 @@ Examples:
   try clone https://github.com/user/repo
 
 Environment:
-  TRY_PATH      Root directory (default: ~/src/tries)
+  TRY_PATH      Root directory (default: ~/tries)
   TRY_PROJECTS  Graduate destination (default: parent of TRY_PATH)`)
 }
