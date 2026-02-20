@@ -60,16 +60,15 @@ release:
   name_template: "v{{.Version}}"
 
 # Homebrew tap (requires separate repo: homebrew-tap)
-# Uncomment when homebrew-tap repo is created
-# brews:
-#   - name: try
-#     repository:
-#       owner: xpzouying
-#       name: homebrew-tap
-#     homepage: "https://github.com/xpzouying/try"
-#     description: "Manage experimental project directories"
-#     license: "MIT"
-#     install: |
-#       bin.install "try"
-#     test: |
-#       system "#{bin}/try", "--version"
+brews:
+  - name: try
+    repository:
+      owner: xpzouying
+      name: homebrew-tap
+    homepage: "https://github.com/xpzouying/try"
+    description: "Manage experimental project directories"
+    license: "MIT"
+    install: |
+      bin.install "try"
+    test: |
+      system "#{bin}/try", "--version"
