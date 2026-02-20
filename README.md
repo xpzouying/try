@@ -12,19 +12,36 @@ Go rewrite of [tobi/try](https://github.com/tobi/try).
 <!-- TODO: Add demo GIF here -->
 <!-- ![Demo](docs/demo.gif) -->
 
-## Quick Start
+## Install
 
 ```bash
-# Install
+# Homebrew (macOS/Linux)
+brew install xpzouying/tap/try
+
+# Or via Go
 go install github.com/xpzouying/try@latest
+```
 
-# Setup (add to your shell config)
-echo 'eval "$(try init zsh)"' >> ~/.zshrc   # zsh
-echo 'eval "$(try init bash)"' >> ~/.bashrc  # bash
-source ~/.zshrc  # reload
+## Setup
 
-# Verify
-type try  # Should show: try is a shell function
+Add to your shell config:
+
+```bash
+# zsh
+echo 'eval "$(try init zsh)"' >> ~/.zshrc
+
+# bash
+echo 'eval "$(try init bash)"' >> ~/.bashrc
+
+# fish
+echo 'try init fish | source' >> ~/.config/fish/config.fish
+```
+
+Reload and verify:
+
+```bash
+source ~/.zshrc      # or restart terminal
+type try             # Should show: try is a shell function
 ```
 
 ## Features
