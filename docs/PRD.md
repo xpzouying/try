@@ -50,7 +50,7 @@ Single binary CLI tool to manage experimental project directories. No runtime de
 - [x] Integration tests
 - [x] Cross-platform build (Linux, macOS)
 - [x] Release automation (goreleaser)
-- [ ] Homebrew formula (requires separate tap repo)
+- [x] Homebrew formula (xpzouying/homebrew-tap)
 
 ## Command Reference
 
