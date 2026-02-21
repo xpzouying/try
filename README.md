@@ -3,23 +3,41 @@
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> Your experiments deserve a home. Your brain doesn't work in neat folders.
+> Your experiments deserve a home.
 
-A CLI tool to manage experimental project directories. Go rewrite of [tobi/try](https://github.com/tobi/try).
+Ever find yourself with directories like `test`, `test2`, `new-test`, `actually-working-test` scattered across your filesystem? Lost experimental code to `/tmp`? Can't remember where you saved that Redis test from last month?
+
+**try** solves this by:
+- **Centralizing experiments** in `~/tries` with auto-dated names (`2024-01-15-redis-test`)
+- **Fuzzy search** to quickly find any experiment (`rds` matches `redis-server`)
+- **Time-aware ranking** - recently used experiments appear first
+
+Go rewrite of [tobi/try](https://github.com/tobi/try). Single binary, no dependencies.
 
 ## Demo
 
-**Create a new experiment:**
+<table>
+<tr>
+<td width="50%">
+
+**Create experiment:** `try redis-test`
 
 https://github.com/user-attachments/assets/0205df21-459a-4e82-a024-b87e1a3d9982
 
-**Create a worktree for current repo:**
+</td>
+<td width="50%">
+
+**Create worktree:** `try .`
 
 https://github.com/user-attachments/assets/fdd83db5-075a-4056-b10b-2cf1ad62717f
 
-**Browse all experiments:**
+</td>
+</tr>
+</table>
 
-![try_history_01](https://github.com/user-attachments/assets/e47427f1-f2e7-4e97-8b57-955016ed6d21)
+**Browse experiments:** `try`
+
+<img src="https://github.com/user-attachments/assets/e47427f1-f2e7-4e97-8b57-955016ed6d21" width="600">
 
 ## Install
 
