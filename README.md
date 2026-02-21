@@ -38,26 +38,29 @@ Go rewrite of [tobi/try](https://github.com/tobi/try). Single binary, no depende
 
 <table>
 <tr>
-<td width="50%">
+<td width="33%">
 
-**Create experiment:** `try redis-test`
+**Create experiment**<br>`try redis-test`
 
 https://github.com/user-attachments/assets/0205df21-459a-4e82-a024-b87e1a3d9982
 
 </td>
-<td width="50%">
+<td width="33%">
 
-**Create worktree:** `try .`
+**Create worktree**<br>`try .`
 
 https://github.com/user-attachments/assets/fdd83db5-075a-4056-b10b-2cf1ad62717f
 
 </td>
+<td width="33%">
+
+**Browse experiments**<br>`try`
+
+<img src="https://github.com/user-attachments/assets/e47427f1-f2e7-4e97-8b57-955016ed6d21">
+
+</td>
 </tr>
 </table>
-
-**Browse experiments:** `try`
-
-<img src="https://github.com/user-attachments/assets/e47427f1-f2e7-4e97-8b57-955016ed6d21" width="600">
 
 ## Install
 
