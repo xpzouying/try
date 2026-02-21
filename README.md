@@ -3,32 +3,34 @@
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+[中文文档](README_CN.md)
+
 > Your experiments deserve a home.
 
 ## The Problem
 
-作为开发者，你一定遇到过这些场景：
+As a developer, you've probably experienced:
 
-- 想测试一个新库，随手创建了 `test`、`test2`、`demo-final-v2` 目录
-- 上周写的 Redis 测试代码，翻遍了整个磁盘也找不到
-- `/tmp` 里的实验代码被系统清理了
-- 同一个问题反复踩坑，因为找不到上次的解决方案
-- 项目目录越来越乱，`~/code` 里塞满了各种半成品
+- Creating `test`, `test2`, `demo-final-v2` directories when trying out a new library
+- Searching everywhere for that Redis test code you wrote last week
+- Losing experimental code when `/tmp` gets cleaned up
+- Hitting the same problem twice because you can't find your previous solution
+- A messy `~/code` directory full of abandoned experiments
 
 ## The Solution
 
-**try** 让你的所有实验代码都有一个统一的家。
+**try** gives all your experimental code a home.
 
 ```bash
 try redis-test
-# → 自动创建 ~/tries/2024-01-15-redis-test 并进入
+# → Creates ~/tries/2024-01-15-redis-test and cd into it
 ```
 
-**不用记路径** - 模糊搜索秒找：输入 `try rds` 就能匹配到 `redis-server`
+**No paths to remember** - Fuzzy search finds it: `try rds` matches `redis-server`
 
-**不用记时间** - 自动日期前缀：一眼看出什么时候创建的
+**No dates to remember** - Auto date-prefix: instantly see when you created it
 
-**不用翻目录** - 最近使用的自动排前面
+**No digging through folders** - Recently used experiments appear first
 
 Go rewrite of [tobi/try](https://github.com/tobi/try). Single binary, no dependencies.
 
