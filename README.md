@@ -3,36 +3,61 @@
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+[中文文档](README_CN.md)
+
 > Your experiments deserve a home.
 
-A CLI tool to manage experimental project directories. Single binary, no dependencies.
+## The Problem
 
-Go rewrite of [tobi/try](https://github.com/tobi/try).
+As a developer, you've probably experienced:
 
-<!-- TODO: Add demo GIF here -->
-<!-- ![Demo](docs/demo.gif) -->
+- Creating `test`, `test2`, `demo-final-v2` directories when trying out a new library
+- Searching everywhere for that Redis test code you wrote last week
+- Losing experimental code when `/tmp` gets cleaned up
+- Hitting the same problem twice because you can't find your previous solution
+- A messy `~/code` directory full of abandoned experiments
+
+## The Solution
+
+**try** gives all your experimental code a home.
+
+```bash
+try redis-test
+# → Creates ~/tries/2024-01-15-redis-test and cd into it
+```
+
+**No paths to remember** - Fuzzy search finds it: `try rds` matches `redis-server`
+
+**No dates to remember** - Auto date-prefix: instantly see when you created it
+
+**No digging through folders** - Recently used experiments appear first
+
+Go rewrite of [tobi/try](https://github.com/tobi/try). Single binary, no dependencies.
 
 ## Demo
 
-1. Simple to try:
+<table>
+<tr>
+<td width="50%">
+
+**Create experiment:** `try redis-test`
 
 https://github.com/user-attachments/assets/0205df21-459a-4e82-a024-b87e1a3d9982
 
-Run `try some_new_thing`.
+</td>
+<td width="50%">
 
-2. Try Git worktree:
+**Create worktree:** `try .`
 
 https://github.com/user-attachments/assets/fdd83db5-075a-4056-b10b-2cf1ad62717f
 
-Run `try . new_feature`.
+</td>
+</tr>
+</table>
 
-3. List all try list:
+**Browse experiments:** `try`
 
-![try_history_01](https://github.com/user-attachments/assets/e47427f1-f2e7-4e97-8b57-955016ed6d21)
-
-Run `try`.
-
-
+<img src="https://github.com/user-attachments/assets/e47427f1-f2e7-4e97-8b57-955016ed6d21" width="600">
 
 ## Install
 
@@ -46,91 +71,44 @@ go install github.com/xpzouying/try@latest
 
 ## Setup
 
-Add to your shell config:
+Add to your shell config (`~/.zshrc`, `~/.bashrc`, or `~/.config/fish/config.fish`):
 
 ```bash
-# zsh
-echo 'eval "$(try init zsh)"' >> ~/.zshrc
-
-# bash
-echo 'eval "$(try init bash)"' >> ~/.bashrc
-
-# fish
-echo 'try init fish | source' >> ~/.config/fish/config.fish
+eval "$(try init zsh)"   # or bash/fish
 ```
-
-Reload and verify:
-
-```bash
-source ~/.zshrc      # or restart terminal
-type try             # Should show: try is a shell function
-```
-
-## Features
-
-- **Centralized experiments** - All experiments in `~/tries` (configurable)
-- **Auto-dated directories** - Creates `2024-01-15-projectname` format
-- **Fuzzy search** - Interactive selector with smart scoring
-- **Time-aware** - Recently accessed directories rank higher
-- **Single binary** - No Ruby or other runtime required
 
 ## Usage
 
 ```bash
-try                  # Interactive selector - browse/search experiments
+try                  # Browse all experiments with fuzzy search
 try redis            # Jump to "redis" experiment or create new
 try clone <url>      # Clone repo into dated directory
 try .                # Create worktree for current repo
 ```
 
-### Examples
-
-```bash
-# Create your first experiment
-$ try redis-test
-# Creates ~/tries/2024-01-15-redis-test and cd into it
-
-# Later, find it with fuzzy search
-$ try redis          # Fuzzy matches "2024-01-15-redis-test"
-
-# Or browse all experiments
-$ try
-# Type to search, ↑/↓ to navigate, Enter to select
-```
-
-### Your tries directory
+All experiments are stored in `~/tries/` with auto-dated names:
 
 ```
 ~/tries/
 ├── 2024-01-10-go-generics/
 ├── 2024-01-12-docker-compose/
-├── 2024-01-15-redis-test/
-└── 2024-01-15-kafka-consumer/
+└── 2024-01-15-redis-test/
 ```
 
 ## Keyboard Shortcuts
 
 | Key | Action |
 |-----|--------|
-| `↑/↓` or `Ctrl-P/N` | Navigate |
-| `Enter` | Select directory (or create if no match) |
-| `Ctrl-T` | Create new experiment with current query |
-| `Esc` or `Ctrl-C` | Exit |
+| `↑/↓` | Navigate |
+| `Enter` | Select or create |
+| `Ctrl-T` | Create new with current query |
+| `Esc` | Exit |
 
 ## Configuration
 
-| Environment Variable | Default | Description |
-|---------------------|---------|-------------|
-| `TRY_PATH` | `~/tries` | Root directory for experiments |
-| `TRY_PROJECTS` | Parent of TRY_PATH | Where graduated projects go |
-
-## Why Go?
-
-The original `try` is written in Ruby. This rewrite provides:
-
-- **Single binary** - No need to install Ruby
-- **Fast startup** - ~5ms vs ~100ms
-- **Easy distribution** - Download and run
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TRY_PATH` | `~/tries` | Experiments directory |
 
 ## License
 
