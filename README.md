@@ -5,12 +5,30 @@
 
 > Your experiments deserve a home.
 
-Ever find yourself with directories like `test`, `test2`, `new-test`, `actually-working-test` scattered across your filesystem? Lost experimental code to `/tmp`? Can't remember where you saved that Redis test from last month?
+## The Problem
 
-**try** solves this by:
-- **Centralizing experiments** in `~/tries` with auto-dated names (`2024-01-15-redis-test`)
-- **Fuzzy search** to quickly find any experiment (`rds` matches `redis-server`)
-- **Time-aware ranking** - recently used experiments appear first
+作为开发者，你一定遇到过这些场景：
+
+- 想测试一个新库，随手创建了 `test`、`test2`、`demo-final-v2` 目录
+- 上周写的 Redis 测试代码，翻遍了整个磁盘也找不到
+- `/tmp` 里的实验代码被系统清理了
+- 同一个问题反复踩坑，因为找不到上次的解决方案
+- 项目目录越来越乱，`~/code` 里塞满了各种半成品
+
+## The Solution
+
+**try** 让你的所有实验代码都有一个统一的家。
+
+```bash
+try redis-test
+# → 自动创建 ~/tries/2024-01-15-redis-test 并进入
+```
+
+**不用记路径** - 模糊搜索秒找：输入 `try rds` 就能匹配到 `redis-server`
+
+**不用记时间** - 自动日期前缀：一眼看出什么时候创建的
+
+**不用翻目录** - 最近使用的自动排前面
 
 Go rewrite of [tobi/try](https://github.com/tobi/try). Single binary, no dependencies.
 
