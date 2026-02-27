@@ -98,6 +98,14 @@ try .                # 为当前仓库创建 worktree
 └── 2024-01-15-redis-test/
 ```
 
+## 用 Worktree 审查 PR
+
+```bash
+try . pr458              # 从当前仓库创建 worktree 并进入
+gh pr checkout 458       # checkout PR 代码（main 分支不受影响）
+# ... 看代码、跑测试，完了在 TUI 里 Ctrl-D 删除
+```
+
 ## 快捷键
 
 | 按键 | 功能 |

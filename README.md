@@ -98,6 +98,14 @@ All experiments are stored in `~/tries/` with auto-dated names:
 └── 2024-01-15-redis-test/
 ```
 
+## Review a PR with Worktree
+
+```bash
+try . pr458              # Create worktree from current repo, cd into it
+gh pr checkout 458       # Checkout PR code (main branch stays untouched)
+# ... review, run tests, done? Ctrl-D delete in TUI
+```
+
 ## Keyboard Shortcuts
 
 | Key | Action |
